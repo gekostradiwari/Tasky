@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>TaskyAPI Tester</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link rel="stylesheet" href="tester.css" />
+</head>
+<body>
+  <header class="bg-dark text-white py-4 mb-3 shadow-sm">
+    <div class="container">
+      <h1 class="h3 mb-1">TaskyAPI Tester</h1>
+      <p class="subtitle mb-0">Interfaccia rapida per testare gli endpoint REST</p>
+    </div>
+  </header>
+  <div class="container-fluid mb-3">
+    <div class="card p-3 mb-3" id="config">
+      <div class="row g-2 align-items-end">
+        <div class="col-sm-6 col-lg-4">
+          <label class="form-label small fw-semibold text-uppercase">Base URL</label>
+          <input id="baseUrl" value="http://127.0.0.1:5000/api" class="form-control form-control-sm" />
+        </div>
+        <div class="col-auto">
+          <button id="setBase" class="btn btn-sm btn-primary mt-3 mt-sm-0">Usa</button>
+        </div>
+        <div class="col-auto">
+          <span id="status" class="badge bg-success-subtle text-success-emphasis"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-3 mb-4">
+      <h2 class="h6 text-secondary mb-3">Token</h2>
+      <div class="row gy-3">
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold text-uppercase">Token Dipendente</label>
+          <div class="input-group input-group-sm">
+            <input id="tokenDip" class="form-control" />
+            <button class="btn btn-outline-secondary" data-copy="tokenDip">Copia</button>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold text-uppercase">Token Manager</label>
+          <div class="input-group input-group-sm">
+            <input id="tokenMgr" class="form-control" />
+            <button class="btn btn-outline-secondary" data-copy="tokenMgr">Copia</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="mb-4 container-fluid">
+    <div class="row g-3" id="cardsGrid">
+      <!-- Register Dipendente -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/register/dipendente">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Register Dipendente</span>
+            <span class="status-chip" id="chipRegDip"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="regDip" class="small">
+              <div class="mb-2"><label class="form-label">Email<input class="form-control form-control-sm" name="email" value="dip_test@example.com" required></label></div>
+              <div class="mb-2"><label class="form-label">Password<input class="form-control form-control-sm" name="password" value="pwd" required></label></div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Nome<input class="form-control form-control-sm" name="nome" value="Mario" required></label></div>
+                <div class="col"><label class="form-label">Cognome<input class="form-control form-control-sm" name="cognome" value="Rossi" required></label></div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Nascita<input class="form-control form-control-sm" name="data_nascita" value="1990-01-01" required></label></div>
+                <div class="col"><label class="form-label">Dip. ID<input class="form-control form-control-sm" name="Dipartimento_id_dipartimento" value="1" required></label></div>
+              </div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="regDipBody" rows="5" class="form-control form-control-sm"></textarea></details>
+              <button data-action="registerDipendente" class="btn btn-sm btn-primary">Invia</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outRegDip"></pre></div>
+        </div>
+      </div>
+
+      <!-- Register Manager -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/register/manager">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Register Manager</span>
+            <span class="status-chip" id="chipRegMgr"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="regMgr" class="small">
+              <div class="mb-2"><label class="form-label">Email<input class="form-control form-control-sm" name="email" value="mgr_test@example.com" required></label></div>
+              <div class="mb-2"><label class="form-label">Password<input class="form-control form-control-sm" name="password" value="pwd" required></label></div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Nome<input class="form-control form-control-sm" name="nome" value="Giulia" required></label></div>
+                <div class="col"><label class="form-label">Cognome<input class="form-control form-control-sm" name="cognome" value="Verdi" required></label></div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Nascita<input class="form-control form-control-sm" name="data_nascita" value="1985-05-05" required></label></div>
+                <div class="col"><label class="form-label">Anni Lav.<input class="form-control form-control-sm" name="anni_lavorativi" value="5" required></label></div>
+                <div class="col"><label class="form-label">Dip. ID<input class="form-control form-control-sm" name="Dipartimento_id_dipartimento" value="1" required></label></div>
+              </div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="regMgrBody" rows="5" class="form-control form-control-sm"></textarea></details>
+              <button data-action="registerManager" class="btn btn-sm btn-primary">Invia</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outRegMgr"></pre></div>
+        </div>
+      </div>
+
+      <!-- Login -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/login">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Login</span>
+            <span class="status-chip" id="chipLogin"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="login" class="small">
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Email<input class="form-control form-control-sm" name="email" value="dip_test@example.com"></label></div>
+                <div class="col"><label class="form-label">Password<input class="form-control form-control-sm" name="password" value="pwd"></label></div>
+              </div>
+              <div class="mb-2"><label class="form-label">Token (alternativo)<input class="form-control form-control-sm" name="token"></label></div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="loginBody" rows="4" class="form-control form-control-sm"></textarea></details>
+              <button data-action="login" class="btn btn-sm btn-primary">Login</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outLogin"></pre></div>
+        </div>
+      </div>
+
+      <!-- Crea Progetto -->
+      <div class="col-12 col-md-6 col-xl-4">
+  <div class="card h-100 shadow-sm" data-endpoint="/add/Project">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Crea Progetto</span>
+            <span class="status-chip" id="chipProj"></span>
+          </div>
+            <div class="card-body pb-2">
+              <form data-form="proj" class="small">
+                <div class="mb-2"><label class="form-label">Token Manager<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="manager"></label></div>
+                <div class="mb-2"><label class="form-label">Nome<input class="form-control form-control-sm" name="nome" value="UI-Proj" required></label></div>
+                <div class="mb-2"><label class="form-label">Descrizione<input class="form-control form-control-sm" name="descrizione" value="Progetto test UI" required></label></div>
+                <div class="row g-2 mb-2">
+                  <div class="col"><label class="form-label">Budget<input class="form-control form-control-sm" name="budget" value="1000.50" required></label></div>
+                  <div class="col"><label class="form-label">Inizio<input class="form-control form-control-sm" name="data_inizio" value="2025-01-01" required></label></div>
+                  <div class="col"><label class="form-label">Fine<input class="form-control form-control-sm" name="data_fine" value="2025-12-31" required></label></div>
+                </div>
+                <div class="row g-2 mb-2">
+                  <div class="col"><label class="form-label">Dip. ID<input class="form-control form-control-sm" name="id_dipartimento" value="1" required></label></div>
+                  <div class="col"><label class="form-label">ID Progetto (opz)<input class="form-control form-control-sm" name="id_progetto" placeholder=""></label></div>
+                </div>
+                <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="projBody" rows="6" class="form-control form-control-sm"></textarea></details>
+                <button data-action="addProject" class="btn btn-sm btn-primary">Crea</button>
+              </form>
+            </div>
+            <div class="card-footer bg-body-tertiary"><pre class="out" id="outProj"></pre></div>
+        </div>
+      </div>
+
+        <!-- Crea Dipartimento -->
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="card h-100 shadow-sm" data-endpoint="/add/Department">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+              <span class="fw-semibold small text-uppercase">Crea Dipartimento</span>
+              <span class="status-chip" id="chipDept"></span>
+            </div>
+            <div class="card-body pb-2">
+              <form data-form="dept" class="small">
+                <div class="mb-2"><label class="form-label">Token Manager<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="manager"></label></div>
+                <div class="mb-2"><label class="form-label">Nome Dipartimento<input class="form-control form-control-sm" name="nome" value="NewDept" required></label></div>
+                <div class="row g-2 mb-2">
+                  <div class="col"><label class="form-label">ID Dipartimento (opz)<input class="form-control form-control-sm" name="id_dipartimento" placeholder=""></label></div>
+                  <div class="col"><label class="form-label">Numero Dipendenti (opz)<input class="form-control form-control-sm" name="numero_dipendenti" placeholder="0"></label></div>
+                </div>
+                <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="deptBody" rows="4" class="form-control form-control-sm"></textarea></details>
+                <button data-action="addDepartment" class="btn btn-sm btn-primary">Crea</button>
+              </form>
+            </div>
+            <div class="card-footer bg-body-tertiary"><pre class="out" id="outDept"></pre></div>
+          </div>
+        </div>
+
+      <!-- Crea Task -->
+      <div class="col-12 col-md-6 col-xl-4">
+  <div class="card h-100 shadow-sm" data-endpoint="/add/Task">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Crea Task</span>
+            <span class="status-chip" id="chipTask"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="task" class="small">
+              <div class="mb-2"><label class="form-label">Token Manager<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="manager"></label></div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">ID Progetto<input class="form-control form-control-sm" name="id_progetto" value="1" required></label></div>
+                <div class="col"><label class="form-label">Dip. ID<input class="form-control form-control-sm" name="id_dipartimento" value="1" required></label></div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Stato<input class="form-control form-control-sm" name="stato" value="Open" required></label></div>
+                <div class="col"><label class="form-label">ID Task (opz)<input class="form-control form-control-sm" name="id" placeholder=""></label></div>
+              </div>
+              <div class="mb-2"><label class="form-label">Descrizione<input class="form-control form-control-sm" name="descrizione" value="Task di test UI" required></label></div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Inizio<input class="form-control form-control-sm" name="data_inizio" value="2025-03-01" required></label></div>
+                <div class="col"><label class="form-label">Fine<input class="form-control form-control-sm" name="data_fine" value="2025-03-31" required></label></div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Email Dip<input class="form-control form-control-sm" name="email_dipendente" value="dip_test@example.com" required></label></div>
+                <div class="col"><label class="form-label">Email Mgr<input class="form-control form-control-sm" name="email_manager" value="mgr_test@example.com" required></label></div>
+              </div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="taskBody" rows="8" class="form-control form-control-sm"></textarea></details>
+              <button data-action="addTask" class="btn btn-sm btn-primary">Crea</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outTask"></pre></div>
+        </div>
+      </div>
+
+      <!-- Update Project -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/update/Project">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Update Progetto</span>
+            <span class="status-chip" id="chipUpdProj"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="updProj" class="small">
+              <div class="mb-2"><label class="form-label">Token Manager<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="manager"></label></div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">ID Progetto<input class="form-control form-control-sm" name="id_progetto" required></label></div>
+                <div class="col"><label class="form-label">Dip. ID<input class="form-control form-control-sm" name="id_dipartimento" placeholder="1"></label></div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Nome<input class="form-control form-control-sm" name="nome" placeholder="(no change)"></label></div>
+                <div class="col"><label class="form-label">Budget<input class="form-control form-control-sm" name="budget" placeholder="(no change)"></label></div>
+              </div>
+              <div class="mb-2"><label class="form-label">Descrizione<input class="form-control form-control-sm" name="descrizione" placeholder="(no change)"></label></div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Data Inizio<input class="form-control form-control-sm" name="data_inizio" placeholder="YYYY-MM-DD"></label></div>
+                <div class="col"><label class="form-label">Data Fine<input class="form-control form-control-sm" name="data_fine" placeholder="YYYY-MM-DD"></label></div>
+              </div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="updProjBody" rows="5" class="form-control form-control-sm"></textarea></details>
+              <button data-action="updateProject" class="btn btn-sm btn-outline-primary">Aggiorna</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outUpdProj"></pre></div>
+        </div>
+      </div>
+
+      <!-- Delete Project -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/delete/Project">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Delete Progetto</span>
+            <span class="status-chip" id="chipDelProj"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="delProj" class="small">
+              <div class="mb-2"><label class="form-label">Token Manager<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="manager"></label></div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">ID Progetto<input class="form-control form-control-sm" name="id_progetto" required></label></div>
+                <div class="col"><label class="form-label">Dip. ID<input class="form-control form-control-sm" name="id_dipartimento" placeholder="1"></label></div>
+              </div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="delProjBody" rows="3" class="form-control form-control-sm"></textarea></details>
+              <button data-action="deleteProject" class="btn btn-sm btn-outline-danger">Elimina</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outDelProj"></pre></div>
+        </div>
+      </div>
+
+      <!-- Update Task -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/update/Task">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Update Task</span>
+            <span class="status-chip" id="chipUpdTask"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="updTask" class="small">
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Token Mgr<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="manager"></label></div>
+                <div class="col"><label class="form-label">ID Task<input class="form-control form-control-sm" name="id" required></label></div>
+                <div class="col"><label class="form-label">ID Progetto<input class="form-control form-control-sm" name="id_progetto" required></label></div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Dip. ID<input class="form-control form-control-sm" name="id_dipartimento" placeholder="1"></label></div>
+                <div class="col"><label class="form-label">Stato<input class="form-control form-control-sm" name="stato" placeholder="(no change)"></label></div>
+              </div>
+              <div class="mb-2"><label class="form-label">Descrizione<input class="form-control form-control-sm" name="descrizione" placeholder="(no change)"></label></div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Data Inizio<input class="form-control form-control-sm" name="data_inizio" placeholder="YYYY-MM-DD"></label></div>
+                <div class="col"><label class="form-label">Data Fine<input class="form-control form-control-sm" name="data_fine" placeholder="YYYY-MM-DD"></label></div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Email Dip<input class="form-control form-control-sm" name="email_dipendente" placeholder="(no change)"></label></div>
+                <div class="col"><label class="form-label">Email Mgr<input class="form-control form-control-sm" name="email_manager" placeholder="(no change)"></label></div>
+              </div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="updTaskBody" rows="6" class="form-control form-control-sm"></textarea></details>
+              <button data-action="updateTask" class="btn btn-sm btn-outline-primary">Aggiorna</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outUpdTask"></pre></div>
+        </div>
+      </div>
+
+      <!-- Delete Task -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/delete/Task">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Delete Task</span>
+            <span class="status-chip" id="chipDelTask"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="delTask" class="small">
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Token Mgr<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="manager"></label></div>
+                <div class="col"><label class="form-label">ID Task<input class="form-control form-control-sm" name="id" required></label></div>
+                <div class="col"><label class="form-label">ID Progetto<input class="form-control form-control-sm" name="id_progetto" required></label></div>
+              </div>
+              <div class="mb-2"><label class="form-label">Dip. ID<input class="form-control form-control-sm" name="id_dipartimento" placeholder="1"></label></div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="delTaskBody" rows="3" class="form-control form-control-sm"></textarea></details>
+              <button data-action="deleteTask" class="btn btn-sm btn-outline-danger">Elimina</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outDelTask"></pre></div>
+        </div>
+      </div>
+
+      <!-- Progetti per Dipartimento -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/project/by-department">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Progetti per Dipartimento</span>
+            <span class="status-chip" id="chipProjDept"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="projDept" class="small">
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Token<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="any"></label></div>
+                <div class="col"><label class="form-label">Dip. ID<input class="form-control form-control-sm" name="id_dipartimento" value="1" required></label></div>
+              </div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="projDeptBody" rows="4" class="form-control form-control-sm"></textarea></details>
+              <button data-action="projectByDept" class="btn btn-sm btn-outline-primary">Fetch</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outProjDept"></pre></div>
+        </div>
+      </div>
+
+      <!-- Numero Dipendenti -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/numeroDipendenti">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Numero Dipendenti</span>
+            <span class="status-chip" id="chipNumDip"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="numDip" class="small">
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Token Manager<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="manager"></label></div>
+                <div class="col"><label class="form-label">Dip. ID<input class="form-control form-control-sm" name="id_dipartimento" value="1" required></label></div>
+              </div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="numDipBody" rows="3" class="form-control form-control-sm"></textarea></details>
+              <button data-action="numeroDipendenti" class="btn btn-sm btn-outline-primary">Fetch</button>
+            </form>
+            <small class="text-muted">Valore denormalizzato mantenuto dal backend. Errori di validazione usano <code>fields</code>.</small>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outNumDip"></pre></div>
+        </div>
+      </div>
+
+      <!-- Progetti in Corso -->
+      <div class="col-12 col-md-6 col-xl-6">
+        <div class="card h-100 shadow-sm" data-endpoint="/projects/in-progress">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Progetti in Corso</span>
+            <span class="status-chip" id="chipProjInProgress"></span>
+          </div>
+          <div class="card-body pb-2">
+                <form data-form="projectsInProgress" class="small">
+                  <div class="mb-2"><label class="form-label small">Token (Manager o Dipendente)<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="any"></label></div>
+                  <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="projInProgressBody" rows="3" class="form-control form-control-sm"></textarea></details>
+                  <button data-action="projectsInProgress" class="btn btn-sm btn-outline-primary">Fetch</button>
+                </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outProjInProgress"></pre></div>
+        </div>
+      </div>
+
+      <!-- Task per Progetto -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/task/by-project">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Task per Progetto</span>
+            <span class="status-chip" id="chipTaskProj"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="taskProj" class="small">
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Token<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="any"></label></div>
+                <div class="col"><label class="form-label">ID Progetto<input class="form-control form-control-sm" name="id_progetto" value="1" required></label></div>
+                <div class="col"><label class="form-label">Dip. ID (mgr)<input class="form-control form-control-sm" name="id_dipartimento" placeholder=""></label></div>
+              </div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="taskProjBody" rows="4" class="form-control form-control-sm"></textarea></details>
+              <button data-action="taskByProject" class="btn btn-sm btn-outline-primary">Fetch</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outTaskProj"></pre></div>
+        </div>
+      </div>
+      
+      <!-- Dipendenti per Progetto -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/dipendenti/by-project">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Dipendenti per Progetto</span>
+            <span class="status-chip" id="chipDipProj"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="dipProj" class="small">
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Token<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="manager"></label></div>
+                <div class="col"><label class="form-label">ID Progetto<input class="form-control form-control-sm" name="id_progetto" value="1" required></label></div>
+                <div class="col"><label class="form-label">Dip. ID (mgr)<input class="form-control form-control-sm" name="id_dipartimento" placeholder=""></label></div>
+              </div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="dipProjBody" rows="3" class="form-control form-control-sm"></textarea></details>
+              <button data-action="dipendentiByProject" class="btn btn-sm btn-outline-primary">Fetch</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outDipProj"></pre></div>
+        </div>
+      </div>
+
+      <!-- Managers per Progetto -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/managers/by-project">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Managers per Progetto</span>
+            <span class="status-chip" id="chipMgrProj"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="mgrProj" class="small">
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Token<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="any"></label></div>
+                <div class="col"><label class="form-label">ID Progetto<input class="form-control form-control-sm" name="id_progetto" value="1" required></label></div>
+                <div class="col"><label class="form-label">Dip. ID (mgr)<input class="form-control form-control-sm" name="id_dipartimento" placeholder=""></label></div>
+              </div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="mgrProjBody" rows="4" class="form-control form-control-sm"></textarea></details>
+              <button data-action="managersByProject" class="btn btn-sm btn-outline-primary">Fetch</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outMgrProj"></pre></div>
+        </div>
+      </div>
+
+          <!-- Progetti per Dipendente -->
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="card h-100 shadow-sm" data-endpoint="/projects/by-dipendente">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+              <span class="fw-semibold small text-uppercase">Progetti per Dipendente</span>
+              <span class="status-chip" id="chipProjDip"></span>
+            </div>
+            <div class="card-body pb-2">
+              <form data-form="projByDip" class="small">
+                <div class="mb-2"><label class="form-label">Email Dipendente<input class="form-control form-control-sm" name="email_dipendente" value="dip_test@example.com" required></label></div>
+                <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="projByDipBody" rows="3" class="form-control form-control-sm"></textarea></details>
+                <button data-action="projectsByDipendente" class="btn btn-sm btn-outline-primary">Fetch</button>
+              </form>
+            </div>
+            <div class="card-footer bg-body-tertiary"><pre class="out" id="outProjByDip"></pre></div>
+          </div>
+        </div>
+
+          <!-- Budget Progetto -->
+          <div class="col-12 col-md-6 col-xl-4">
+            <div class="card h-100 shadow-sm" data-endpoint="/projects/budget">
+              <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                <span class="fw-semibold small text-uppercase">Budget Progetto</span>
+                <span class="status-chip" id="chipBudget"></span>
+              </div>
+              <div class="card-body pb-2">
+                <form data-form="projBudget" class="small">
+                  <div class="mb-2"><label class="form-label">ID Progetto<input class="form-control form-control-sm" name="id_progetto" value="1" required></label></div>
+                  <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="projBudgetBody" rows="2" class="form-control form-control-sm"></textarea></details>
+                  <button data-action="projectBudget" class="btn btn-sm btn-outline-primary">Fetch</button>
+                </form>
+              </div>
+              <div class="card-footer bg-body-tertiary"><pre class="out" id="outProjBudget"></pre></div>
+            </div>
+          </div>
+
+          <!-- Dipendenti: sintesi -->
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="card h-100 shadow-sm" data-endpoint="/dipendenti/by-department">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+              <span class="fw-semibold small text-uppercase">Dipendenti (sintesi)</span>
+              <span class="status-chip" id="chipDipDept"></span>
+            </div>
+            <div class="card-body pb-2">
+              <form data-form="dipDept" class="small">
+                <div class="row g-2 mb-2">
+                  <div class="col"><label class="form-label">Token<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="manager"></label></div>
+                  <div class="col"><label class="form-label">Dip. ID<input class="form-control form-control-sm" name="id_dipartimento" value="1" required></label></div>
+                </div>
+                <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="dipDeptBody" rows="3" class="form-control form-control-sm"></textarea></details>
+                <button data-action="dipendentiByDept" class="btn btn-sm btn-outline-primary">Fetch</button>
+              </form>
+            </div>
+            <div class="card-footer bg-body-tertiary"><pre class="out" id="outDipDept"></pre></div>
+          </div>
+        </div>
+
+        <!-- Dipendenti: dati completi (tabella) -->
+        <div class="col-12 col-md-6 col-xl-8">
+          <div class="card h-100 shadow-sm" data-endpoint="/dipendenti/data/by-department">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+              <span class="fw-semibold small text-uppercase">Dipendenti (dati completi)</span>
+              <div class="d-flex align-items-center gap-2">
+                <span class="status-chip" id="chipDipDeptData"></span>
+                <button id="copyDipCsv" class="btn btn-sm btn-outline-secondary" style="display:none">Copia CSV</button>
+              </div>
+            </div>
+            <div class="card-body pb-2">
+              <form data-form="dipDeptData" class="small">
+                <div class="row g-2 mb-2">
+                  <div class="col"><label class="form-label">Token<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="manager"></label></div>
+                  <div class="col"><label class="form-label">Dip. ID<input class="form-control form-control-sm" name="id_dipartimento" value="1" required></label></div>
+                </div>
+                <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="dipDeptDataBody" rows="3" class="form-control form-control-sm"></textarea></details>
+                <button data-action="dipendentiDataByDept" class="btn btn-sm btn-outline-primary">Fetch</button>
+              </form>
+              <div class="table-responsive mt-3"><table class="table table-sm" id="dipDeptTable"><thead></thead><tbody></tbody></table></div>
+            </div>
+            <div class="card-footer bg-body-tertiary"><pre class="out" id="outDipDeptData" style="display:none"></pre></div>
+          </div>
+        </div>
+    </div>
+  </section>
+
+  <div class="container-fluid mb-4">
+    <div class="row g-3">
+      <div class="col-12 col-lg-6">
+        <div class="card h-100">
+          <div class="card-header py-2 d-flex align-items-center justify-content-between">
+            <span class="fw-semibold small text-uppercase">Raw Request</span>
+          </div>
+          <div class="card-body p-2"><pre id="lastRequest" class="mb-0" style="max-height:300px; overflow:auto;"></pre></div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-6">
+        <div class="card h-100">
+          <div class="card-header py-2 d-flex align-items-center justify-content-between">
+            <span class="fw-semibold small text-uppercase">Raw Response</span>
+          </div>
+          <div class="card-body p-2"><pre id="lastResponse" class="mb-0" style="max-height:300px; overflow:auto;"></pre></div>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="card" id="dbSnapshotSection">
+          <div class="card-header py-2 d-flex align-items-center">
+            <span class="fw-semibold small text-uppercase me-2">Database Snapshot</span>
+            <span class="status-chip" id="chipSnapshot"></span>
+            <div class="ms-auto d-flex align-items-center gap-3">
+              <div class="form-check form-switch m-0 p-0">
+                <input class="form-check-input" type="checkbox" id="autoSnapshot" checked />
+                <label class="form-check-label small" for="autoSnapshot">Auto update</label>
+              </div>
+              <button id="btnSnapshot" type="button" class="btn btn-sm btn-outline-secondary">Aggiorna</button>
+            </div>
+          </div>
+          <div class="card-body p-2">
+            <pre id="dbSnapshot" class="out mb-0" style="max-height:400px; overflow:auto;" title="Contenuto tabelle principali"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+      
+  </div>
+
+  <footer class="text-center small py-4 text-muted">
+    TaskyAPI Tester - build veloce. Modifica liberamente.
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  <script src="tester.js"></script>
+</body>
+</html>

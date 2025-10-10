@@ -1,0 +1,37 @@
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "3306:3306"
+
+  api:
+    build: .
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: rootpassword
+      DB_NAME: TasksManager
+      PORT: 5001
+    depends_on:
+      - db
+    ports:
+      - "${API_PORT:-5001}:5001"
+
+  docs:
+    build:
+      context: .
+      target: docs
+    command: python -m http.server 8080 -d /app/docs/_build/html
+    ports:
+      - "${DOCS_PORT:-8080}:8080"
+    # Rebuild docs only when source changes; for live dev use sphinx-autobuild locally
+    depends_on:
+      - api
+
+volumes:
+  db_data:

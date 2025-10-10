@@ -1,0 +1,981 @@
+Using base URL: http://127.0.0.1:5001
+
+=== Register Dipendente ===
+{
+  "data": {
+    "token": "54c49e72e0e746024903a30e205f91d597b9031624d737511bbcfd32da7483eb"
+  },
+  "message": "User registered successfully"
+}
+
+201
+Dipendente token: 54c49e72e0e746024903a30e205f91d597b9031624d737511bbcfd32da7483eb
+54c49e72e0e746024903a30e205f91d597b9031624d737511bbcfd32da7483eb
+
+=== Login Dipendente with token ===
+{
+  "data": {
+    "token": "54c49e72e0e746024903a30e205f91d597b9031624d737511bbcfd32da7483eb",
+    "type": "Dipendente"
+  },
+  "message": "Login effettuato"
+}
+
+=== Login Dipendente with email/password ===
+{
+  "data": {
+    "token": "54c49e72e0e746024903a30e205f91d597b9031624d737511bbcfd32da7483eb",
+    "type": "Dipendente"
+  },
+  "message": "Login effettuato"
+}
+
+=== Re-register Dipendente (should be duplicate) ===
+{
+  "error": {
+    "code": "DUPLICATE_USER",
+    "message": "L'utente \u00e8 gi\u00e0 registrato"
+  }
+}
+
+409
+
+=== Login Dipendente after duplicate check (token) ===
+{
+  "data": {
+    "token": "54c49e72e0e746024903a30e205f91d597b9031624d737511bbcfd32da7483eb",
+    "type": "Dipendente"
+  },
+  "message": "Login effettuato"
+}
+
+=== Login Dipendente after duplicate check (email/password) ===
+{
+  "data": {
+    "token": "54c49e72e0e746024903a30e205f91d597b9031624d737511bbcfd32da7483eb",
+    "type": "Dipendente"
+  },
+  "message": "Login effettuato"
+}
+
+=== Register Manager ===
+{
+  "data": {
+    "token": "44942af00133d94f8233cffcfebbf0122de7a3c51e98867ec80d810070a0dce0"
+  },
+  "message": "Manager registered successfully"
+}
+
+201
+Manager token: 44942af00133d94f8233cffcfebbf0122de7a3c51e98867ec80d810070a0dce0
+44942af00133d94f8233cffcfebbf0122de7a3c51e98867ec80d810070a0dce0
+
+=== Crea Dipartimento (Manager) ===
+{
+  "data": {
+    "id_dipartimento": 2
+  },
+  "message": "Dipartimento creato correttamente"
+}
+
+201
+Created department id: 2
+
+=== Crea Dipartimento duplicato (should be 409 or handled) ===
+{
+  "error": {
+    "code": "DUPLICATE_DEPARTMENT",
+    "message": "Il dipartimento \u00e8 gi\u00e0 registrato"
+  }
+}
+
+409
+
+=== Negative: Dipendente tenta creare Dipartimento (should 403) ===
+{
+  "error": {
+    "code": "AUTH_FORBIDDEN_ROLE",
+    "message": "Permesso negato: ruolo non autorizzato"
+  }
+}
+
+403
+
+=== Login Manager with token ===
+{
+  "data": {
+    "token": "44942af00133d94f8233cffcfebbf0122de7a3c51e98867ec80d810070a0dce0",
+    "type": "Manager"
+  },
+  "message": "Login effettuato"
+}
+
+=== Login Manager with email/password ===
+{
+  "data": {
+    "token": "44942af00133d94f8233cffcfebbf0122de7a3c51e98867ec80d810070a0dce0",
+    "type": "Manager"
+  },
+  "message": "Login effettuato"
+}
+
+=== Numero Dipendenti (manager scope) ===
+{
+  "n_dipendenti": 1
+}
+
+200
+
+=== Numero Dipendenti (dipendente token should 403) ===
+{
+  "error": {
+    "code": "AUTH_FORBIDDEN_ROLE",
+    "message": "Permesso negato: richiede ruolo Manager"
+  }
+}
+
+403
+
+=== Numero Dipendenti (missing id_dipartimento) ===
+{
+  "error": {
+    "code": "MISSING_PARAMS",
+    "fields": {
+      "id_dipartimento": [
+        "Missing data for required field."
+      ]
+    },
+    "message": "Validazione fallita"
+  }
+}
+
+400
+
+All done.
+
+=== Dipendenti per Dipartimento (manager scope) ===
+{
+  "count": 1,
+  "items": [
+    {
+      "cognome": "Cognome",
+      "data_nascita": "Mon, 01 Jan 1990 00:00:00 GMT",
+      "email": "dip_1759958879@example.com",
+      "nome": "Nome"
+    }
+  ]
+}
+
+200
+
+=== Dipendenti per Dipartimento (missing id_dipartimento) ===
+{
+  "error": {
+    "code": "MISSING_PARAMS",
+    "fields": {
+      "id_dipartimento": [
+        "Missing data for required field."
+      ]
+    },
+    "message": "Validazione fallita"
+  }
+}
+
+400
+
+=== Dipendenti per Dipartimento (dipendente token should 403) ===
+{
+  "error": {
+    "code": "AUTH_FORBIDDEN_ROLE",
+    "message": "Permesso negato: richiede ruolo Manager"
+  }
+}
+
+403
+
+=== Dipendenti per Dipartimento (manager other dept should 403) ===
+
+=== Dipendenti DATA per Dipartimento (manager scope) ===
+{
+  "count": 1,
+  "items": [
+    {
+      "Dipartimento_id_dipartimento": 1,
+      "cognome": "Cognome",
+      "data_nascita": "Mon, 01 Jan 1990 00:00:00 GMT",
+      "email": "dip_1759958879@example.com",
+      "nome": "Nome"
+    }
+  ]
+}
+
+200
+{
+  "error": {
+    "code": "AUTH_FORBIDDEN_DEPARTMENT",
+    "message": "Permesso negato: manager di altro dipartimento"
+  }
+}
+
+403
+
+=== Re-register Manager (should be duplicate) ===
+{
+  "error": {
+    "code": "DUPLICATE_USER",
+    "message": "L'utente \u00e8 gi\u00e0 registrato"
+  }
+}
+
+409
+
+=== Login Manager after duplicate check (token) ===
+{
+  "data": {
+    "token": "44942af00133d94f8233cffcfebbf0122de7a3c51e98867ec80d810070a0dce0",
+    "type": "Manager"
+  },
+  "message": "Login effettuato"
+}
+
+=== Login Manager after duplicate check (email/password) ===
+{
+  "data": {
+    "token": "44942af00133d94f8233cffcfebbf0122de7a3c51e98867ec80d810070a0dce0",
+    "type": "Manager"
+  },
+  "message": "Login effettuato"
+}
+
+=== Negative tests: invalid token / wrong credentials ===
+{
+  "error": {
+    "code": "AUTH_TOKEN_INVALID",
+    "message": "Token non valido"
+  }
+}
+
+403
+{
+  "error": {
+    "code": "INVALID_CREDENTIALS",
+    "message": "Email o password non valide"
+  }
+}
+
+401
+{
+  "error": {
+    "code": "INVALID_CREDENTIALS",
+    "message": "Email o password non valide"
+  }
+}
+
+401
+
+=== Project creation: auto id ===
+{
+  "data": {
+    "id_progetto": 1
+  },
+  "message": "Progetto inserito correttamente"
+}
+
+201
+
+=== Projects in Progress (manager should succeed) ===
+{
+  "data": {
+    "count": 1,
+    "items": [
+      {
+        "Dipartimento_id_dipartimento": 1,
+        "budgetIstanziato": "10000.50",
+        "dataFine": "2025-12-31",
+        "dataInizio": "2025-01-01",
+        "descrizione": "Test project",
+        "id_progetto": 1,
+        "nome": "TestProj"
+      }
+    ],
+    "scope": "all"
+  }
+}
+
+200
+
+=== Projects in Progress (dipendente should be forbidden 403) ===
+{
+  "error": {
+    "code": "AUTH_FORBIDDEN_ROLE",
+    "message": "Permesso negato: ruolo non autorizzato"
+  }
+}
+
+403
+Returned project id: 1
+
+=== Update Project (change nome & descrizione) ===
+{
+  "data": {
+    "Dipartimento_id_dipartimento": 1,
+    "budgetIstanziato": "10000.50",
+    "dataFine": "2025-12-31",
+    "dataInizio": "2025-01-01",
+    "descrizione": "Descrizione aggiornata",
+    "id_progetto": 1,
+    "nome": "TestProjUpdated"
+  }
+}
+
+200
+
+=== Delete Project (negative: non-existing id) ===
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Progetto non trovato"
+  }
+}
+
+404
+
+=== Update Task (negative before creation) ===
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Task non trovata"
+  }
+}
+
+404
+
+=== Projects by Dipendente (happy path) ===
+{
+  "data": {
+    "count": 0,
+    "items": []
+  }
+}
+
+200
+
+=== Projects by Dipendente (missing email should 400) ===
+{
+  "error": {
+    "code": "MISSING_PARAMS",
+    "fields": {
+      "email_dipendente": [
+        "Missing data for required field."
+      ]
+    },
+    "message": "Validazione fallita"
+  }
+}
+
+400
+
+=== Project Budget (happy path) ===
+{
+  "data": {
+    "budget": "10000.50"
+  }
+}
+
+200
+
+=== Project Budget (missing id_progetto should 400) ===
+{
+  "error": {
+    "code": "MISSING_PARAMS",
+    "fields": {
+      "id_progetto": [
+        "Missing data for required field."
+      ]
+    },
+    "message": "Validazione fallita"
+  }
+}
+
+400
+
+=== Dipendenti per Progetto (manager scope) ===
+{
+  "count": 0,
+  "items": [],
+  "scope": "all"
+}
+
+200
+
+=== Dipendenti per Progetto (missing id_progetto) ===
+{
+  "error": {
+    "code": "MISSING_PARAMS",
+    "fields": {
+      "id_dipartimento": [
+        "Missing data for required field."
+      ]
+    },
+    "message": "Validazione fallita"
+  }
+}
+
+400
+
+=== Dipendenti per Progetto (dipendente token should 403) ===
+{
+  "error": {
+    "code": "AUTH_FORBIDDEN_ROLE",
+    "message": "Permesso negato: richiede ruolo Manager"
+  }
+}
+
+403
+
+=== Managers per Progetto (manager scope) ===
+{
+  "count": 0,
+  "items": [],
+  "scope": "all"
+}
+
+200
+
+=== Managers per Progetto (dipendente scope) ===
+{
+  "count": 0,
+  "items": [],
+  "scope": "own"
+}
+
+200
+
+=== Dipendenti per Progetto (manager other dept should 403) ===
+{
+  "error": {
+    "code": "AUTH_FORBIDDEN_DEPARTMENT",
+    "message": "Permesso negato: manager di altro dipartimento"
+  }
+}
+
+403
+
+=== Insert explicit id project (should succeed or conflict if id exists) ===
+{
+  "data": {
+    "id_progetto": 1759959879
+  },
+  "message": "Progetto inserito correttamente"
+}
+
+201
+Explicit project created (id provided).
+
+=== Duplicate explicit project id (force same id again) ===
+{
+  "error": {
+    "code": "DUPLICATE_PROJECT",
+    "message": "Il progetto \u00e8 gi\u00e0 registrato"
+  }
+}
+
+409
+
+=== Cross-department project creation (mismatched department id) ===
+{
+  "error": {
+    "code": "AUTH_FORBIDDEN_DEPARTMENT",
+    "message": "Permesso negato: manager di altro dipartimento"
+  }
+}
+
+403
+
+=== Project creation with Dipendente token (should be 403) ===
+{
+  "error": {
+    "code": "AUTH_FORBIDDEN_ROLE",
+    "message": "Permesso negato: richiede ruolo Manager"
+  }
+}
+
+403
+
+=== Task creation (auto id) ===
+{
+  "data": {
+    "id_task": 1
+  },
+  "message": "Task inserita correttamente"
+}
+
+201
+Returned task id: 1
+
+=== Update Task (change stato) ===
+{
+  "data": {
+    "count": 1,
+    "items": [
+      {
+        "Dipendente_email": "dip_1759958879@example.com",
+        "Manager_email": "mgr_1759958879@example.com",
+        "Progetto_id_progetto": 1759959879,
+        "data_fine": "2025-03-31",
+        "data_inizio": "2025-03-01",
+        "descrizione": "Task di test",
+        "id": 1,
+        "stato": "InProgress"
+      }
+    ]
+  }
+}
+
+200
+
+=== Negative: addTask with dipendente token (should 403) ===
+{
+  "error": {
+    "code": "AUTH_FORBIDDEN_ROLE",
+    "message": "Permesso negato: richiede ruolo Manager"
+  }
+}
+
+403
+
+=== All extended tests completed successfully ===
+
+=== Visibility: manager fetch projects (scope all) ===
+{
+  "data": {
+    "count": 2,
+    "items": [
+      {
+        "Dipartimento_id_dipartimento": 1,
+        "budgetIstanziato": "10000.50",
+        "dataFine": "2025-12-31",
+        "dataInizio": "2025-01-01",
+        "descrizione": "Descrizione aggiornata",
+        "id_progetto": 1,
+        "nome": "TestProjUpdated"
+      },
+      {
+        "Dipartimento_id_dipartimento": 1,
+        "budgetIstanziato": "10000.50",
+        "dataFine": "2025-12-31",
+        "dataInizio": "2025-01-01",
+        "descrizione": "Test project",
+        "id_progetto": 1759959879,
+        "nome": "TestProj-Explicit"
+      }
+    ],
+    "scope": "all"
+  }
+}
+
+200
+
+=== Visibility negative: manager missing token ===
+{
+  "error": {
+    "code": "MISSING_PARAMS",
+    "fields": {
+      "token": [
+        "Missing data for required field."
+      ]
+    },
+    "message": "Validazione fallita"
+  }
+}
+
+400
+
+=== Visibility negative: manager invalid token ===
+{
+  "error": {
+    "code": "AUTH_TOKEN_INVALID",
+    "message": "Token non valido"
+  }
+}
+
+403
+
+=== Visibility: dipendente fetch projects (scope own) ===
+{
+  "data": {
+    "count": 1,
+    "items": [
+      {
+        "Dipartimento_id_dipartimento": 1,
+        "budgetIstanziato": "10000.50",
+        "dataFine": "2025-12-31",
+        "dataInizio": "2025-01-01",
+        "descrizione": "Test project",
+        "id_progetto": 1759959879,
+        "nome": "TestProj-Explicit"
+      }
+    ],
+    "scope": "own"
+  }
+}
+
+200
+
+=== Visibility negative: project by department missing id_dipartimento ===
+{
+  "error": {
+    "code": "MISSING_PARAMS",
+    "fields": {
+      "id_dipartimento": [
+        "Missing data for required field."
+      ]
+    },
+    "message": "Validazione fallita"
+  }
+}
+
+400
+
+=== Visibility: manager fetch tasks by project (scope all) ===
+{
+  "data": {
+    "count": 1,
+    "items": [
+      {
+        "Dipendente_email": "dip_1759958879@example.com",
+        "Manager_email": "mgr_1759958879@example.com",
+        "Progetto_id_progetto": 1759959879,
+        "data_fine": "2025-03-31",
+        "data_inizio": "2025-03-01",
+        "descrizione": "Task di test",
+        "id": 1,
+        "stato": "InProgress"
+      }
+    ],
+    "scope": "all"
+  }
+}
+
+200
+
+=== Visibility negative: manager tasks missing id_dipartimento ===
+{
+  "error": {
+    "code": "MISSING_PARAMS",
+    "fields": {
+      "id_dipartimento": [
+        "Missing data for required field."
+      ]
+    },
+    "message": "Parametri richiesti mancanti"
+  }
+}
+
+400
+
+=== Visibility: dipendente tasks by project (scope own) ===
+{
+  "data": {
+    "count": 1,
+    "items": [
+      {
+        "Dipendente_email": "dip_1759958879@example.com",
+        "Manager_email": "mgr_1759958879@example.com",
+        "Progetto_id_progetto": 1759959879,
+        "data_fine": "2025-03-31",
+        "data_inizio": "2025-03-01",
+        "descrizione": "Task di test",
+        "id": 1,
+        "stato": "InProgress"
+      }
+    ],
+    "scope": "own"
+  }
+}
+
+200
+
+=== Register second Dipendente (for filtering) ===
+{
+  "data": {
+    "token": "e869b31151d08b2e087c67a75abff214d2af78ce8b0788163b93dc868a313baf"
+  },
+  "message": "User registered successfully"
+}
+
+201
+Dipendente2 token: e869b31151d08b2e087c67a75abff214d2af78ce8b0788163b93dc868a313baf
+e869b31151d08b2e087c67a75abff214d2af78ce8b0788163b93dc868a313baf
+
+=== Create task for second Dipendente ===
+{
+  "data": {
+    "id_task": 2
+  },
+  "message": "Task inserita correttamente"
+}
+
+201
+
+=== Visibility: manager tasks after second task (should increase count) ===
+{
+  "data": {
+    "count": 2,
+    "items": [
+      {
+        "Dipendente_email": "dip_1759958879@example.com",
+        "Manager_email": "mgr_1759958879@example.com",
+        "Progetto_id_progetto": 1759959879,
+        "data_fine": "2025-03-31",
+        "data_inizio": "2025-03-01",
+        "descrizione": "Task di test",
+        "id": 1,
+        "stato": "InProgress"
+      },
+      {
+        "Dipendente_email": "dip2_1759958879@example.com",
+        "Manager_email": "mgr_1759958879@example.com",
+        "Progetto_id_progetto": 1759959879,
+        "data_fine": "2025-04-30",
+        "data_inizio": "2025-04-01",
+        "descrizione": "Task dip2",
+        "id": 2,
+        "stato": "Open"
+      }
+    ],
+    "scope": "all"
+  }
+}
+
+200
+
+=== Visibility: first dipendente tasks remain isolated (still own only) ===
+{
+  "data": {
+    "count": 1,
+    "items": [
+      {
+        "Dipendente_email": "dip_1759958879@example.com",
+        "Manager_email": "mgr_1759958879@example.com",
+        "Progetto_id_progetto": 1759959879,
+        "data_fine": "2025-03-31",
+        "data_inizio": "2025-03-01",
+        "descrizione": "Task di test",
+        "id": 1,
+        "stato": "InProgress"
+      }
+    ],
+    "scope": "own"
+  }
+}
+
+200
+
+=== Visibility: second dipendente tasks (own) ===
+{
+  "data": {
+    "count": 1,
+    "items": [
+      {
+        "Dipendente_email": "dip2_1759958879@example.com",
+        "Manager_email": "mgr_1759958879@example.com",
+        "Progetto_id_progetto": 1759959879,
+        "data_fine": "2025-04-30",
+        "data_inizio": "2025-04-01",
+        "descrizione": "Task dip2",
+        "id": 2,
+        "stato": "Open"
+      }
+    ],
+    "scope": "own"
+  }
+}
+
+200
+
+=== Delete Task (happy path after visibility tests) ===
+{
+  "data": {
+    "count": 1,
+    "items": [
+      {
+        "Dipendente_email": "dip2_1759958879@example.com",
+        "Manager_email": "mgr_1759958879@example.com",
+        "Progetto_id_progetto": 1759959879,
+        "data_fine": "2025-04-30",
+        "data_inizio": "2025-04-01",
+        "descrizione": "Task dip2",
+        "id": 2,
+        "stato": "Open"
+      }
+    ]
+  },
+  "message": "Task eliminata"
+}
+
+200
+
+=== Delete Task (negative again) ===
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Task non trovata"
+  }
+}
+
+404
+
+=== Numero Dipendenti after second registration (should reflect +1) ===
+{
+  "n_dipendenti": 2
+}
+
+200
+
+=== Numero Dipendenti wrong department (manager) ===
+{
+  "error": {
+    "code": "AUTH_FORBIDDEN_DEPARTMENT",
+    "message": "Permesso negato: manager di altro dipartimento"
+  }
+}
+
+403
+
+=== Visibility negative: tasks by project missing id_progetto ===
+{
+  "error": {
+    "code": "MISSING_PARAMS",
+    "fields": {
+      "id_progetto": [
+        "Missing data for required field."
+      ]
+    },
+    "message": "Validazione fallita"
+  }
+}
+
+400
+
+=== Unified visibility endpoint tests completed ===
+
+=== Visibility negative: manager wrong department (projects) ===
+{
+  "error": {
+    "code": "AUTH_FORBIDDEN_DEPARTMENT",
+    "message": "Permesso negato: manager di altro dipartimento"
+  }
+}
+
+403
+
+=== Visibility negative: manager wrong department (tasks) ===
+{
+  "error": {
+    "code": "AUTH_FORBIDDEN_DEPARTMENT",
+    "message": "Permesso negato: manager di altro dipartimento"
+  }
+}
+
+403
+
+=== Visibility empty result: dipendente other department ===
+{
+  "data": {
+    "count": 0,
+    "items": [],
+    "scope": "own"
+  }
+}
+
+200
+
+=== Visibility empty result: dipendente tasks non-existing project ===
+{
+  "data": {
+    "count": 0,
+    "items": [],
+    "scope": "own"
+  }
+}
+
+200
+
+=== Additional negative & empty visibility tests completed ===
+
+=== Validation: missing required field in project creation (expect 400 with fields) ===
+{
+  "error": {
+    "code": "MISSING_PARAMS",
+    "fields": {
+      "nome": [
+        "Missing data for required field."
+      ]
+    },
+    "message": "Validazione fallita"
+  }
+}
+
+400
+
+=== Validation: missing token for task creation (expect 401) ===
+{
+  "error": {
+    "code": "AUTH_TOKEN_MISSING",
+    "message": "Token mancante"
+  }
+}
+
+401
+
+=== Validation: login with neither token nor credentials (expect 400) ===
+{
+  "error": {
+    "code": "MISSING_CREDENTIALS",
+    "fields": [
+      "Devi fornire token oppure coppia email/password"
+    ],
+    "message": "Validazione login fallita"
+  }
+}
+
+400
+
+=== Validation: login with only email (expect 400) ===
+{
+  "error": {
+    "code": "MISSING_CREDENTIALS",
+    "fields": [
+      "Devi fornire token oppure coppia email/password"
+    ],
+    "message": "Validazione login fallita"
+  }
+}
+
+400
+
+=== Validation: login with only password (expect 400) ===
+{
+  "error": {
+    "code": "MISSING_CREDENTIALS",
+    "fields": [
+      "Devi fornire token oppure coppia email/password"
+    ],
+    "message": "Validazione login fallita"
+  }
+}
+
+400
+
+=== Validation/Integrity: task creation with non-existent project (expect 400 or 400/409 mapped) ===
+{
+  "error": {
+    "code": "DB_INTEGRITY_ERROR",
+    "message": "Violazione di integrit\u00e0 referenziale"
+  }
+}
+
+400
+
+=== Extended Marshmallow + integrity negative tests completed ===

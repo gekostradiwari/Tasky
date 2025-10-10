@@ -1,0 +1,27 @@
+docker compose down && docker volume rm taskyapi_db_data && docker compose up --build
+
+Crea dipartimento (input: id_dipartiment, nome, numero_dipendenti)
+
+Manager: 
+visualizza Task (input: id_progetto) ritorna tutte le task di quel progetto
+visualizza Progetto (input: id_dipartimento) ritorna tutti i progetti di quel dipartimento
+inserimento Task (input: stato, descrizione, data inizio/fine, id_progetto, email dipendente) ritorna  la lista dei task di quel progetto (con aggiunta di quel dipendente in input)
+modifica Task (input: id_progetto, task, stato) ritorna i task di quel progetto, con lo stato di quella task aggiornato con quello in input
+eliminazione Task (input: id_progetto, task) ritorna i task di quel progetto, con la rimozione del task in input
+selezione budget per un progetto (id_progetto) ritorna il budget di quel progetto
+selezione progetti dipendente (input: email_dipendente) ritorna i progetti del dipendente
+selezione dei progetti in sviluppo (input: nessuno) ritorna i progetto in corso
+selezione dipendenti di un progetto(input: id_progetto) ritorna i dipendenti che lavorano a quel progetto
+selezione manager di un progetto(input: id_progetto) ritorna tutti i manager che lavorano a quel progetto
+selezione dipendenti di un dipartimento (input: id_dipartimento) ritorna tutti dipendenti di quel dipartimento
+selezione dipartimento di un progetto (input: id_progetto) ritorna il dipartimento assegnato a quel progetto
+selezione numero dipendenti dipartimento (input: id_dipartimento) ritorna il numero di dipendenti a quel dipartimento
+
+
+Dipendente:
+visualizza progetti (input: id_dipartimento) ritorna tutti i progetti assegnati all'email del dipendente relative al dipartimento
+visualizza Task (input: id_progetto) ritorna tutte le task assegnate all'email del dipendente relative a quel progetto
+aggiornamento Task (cambia stato, dato un progetto e una task), ritorna tutte le task del progetto
+Selezione progetti manager (input: manager email) ritorna i progetti con quel manager 
+Selezione manager di un progetto(input: progetto) ritorna i dati del manager
+

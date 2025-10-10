@@ -1,0 +1,9 @@
+body { background:linear-gradient(120deg,#f5f7fa,#eef2f6); }
+textarea { width:100%; font-family:monospace; font-size:.7rem; background:#0c1824; color:#e8f2ff; padding:.5rem .55rem; border:1px solid #1e2d3a; border-radius:4px; }
+details.raw-toggle summary { cursor:pointer; font-size:.65rem; color:#0d5c8c; }
+.status-chip { font-size:.55rem; letter-spacing:.5px; padding:.2rem .45rem; border-radius:12px; background:#e2e8f0; color:#334155; font-weight:600; text-transform:uppercase; }
+.status-chip.ok { background:#defce7; color:#086c37; }
+.status-chip.err { background:#fee4e2; color:#b42318; }
+pre.out { background:#101b27; color:#d8e9f7; padding:.5rem .55rem; font-size:.63rem; overflow:auto; max-height:240px; border-radius:4px; line-height:1.2; }
+#lastRequest, #lastResponse { background:#21262d; color:#e6edf3; padding:.6rem .65rem; font-size:.65rem; border-radius:4px; }
+footer { font-size:.7rem; }
