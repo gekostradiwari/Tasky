@@ -1,34 +1,48 @@
-# Gradle files
-.gradle/
-build/
+# Python
+__pycache__/
+*.pyc
 
-# Local configuration file (sdk path, etc)
-local.properties
+# Virtual envs
+.venv/
+venv/
 
-# Log/OS Files
+# Editor/OS
+.vscode/
+.DS_Store
+
+# Secrets
+secrets/
+*.secret.json
+*firebase-adminsdk*.json
+*service-account*.json
+*.serviceaccount.json
+.env
+.env.*
+*.env
+
+# Logs
 *.log
 
-# Android Studio generated files and folders
-captures/
-.externalNativeBuild/
-.cxx/
-*.aab
+# Node/tester cache (if any)
+node_modules/
+
+# Android tester app (do NOT commit test app for notifications)
+android/testingANDROID/
+
+# Android common artifacts
+android/**/.gradle/
+android/**/build/
+android/**/.idea/
+android/**/local.properties
+android/**/*.iml
 *.apk
-output-metadata.json
-
-# IntelliJ
-*.iml
-.idea/
-misc.xml
-deploymentTargetDropDown.xml
-render.experimental.xml
-
-# Keystore files
-*.jks
+*.aab
 *.keystore
+*.jks
 
-# Google Services (e.g. APIs or Firebase)
+# Firebase config (avoid committing by default)
 google-services.json
 
-# Android Profiling
-*.hprof
+# Generated outputs/archives
+scripts/output/
+tasky-notify.zip
