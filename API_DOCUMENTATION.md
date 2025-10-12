@@ -47,10 +47,10 @@ Documento di riferimento definitivo per tutte le rotte disponibili, con requisit
 
 ## 4. Autenticazione & Utenti
 ### 4.1 POST /api/register/dipendente (Pubblico)
-Registra un dipendente.
+Registra un dipendente. I campi `sesso` e `numero_telefono` sono OBBLIGATORI.
 Richiesta:
 ```json
-{ "email":"user@example.com", "password":"pwd", "nome":"Mario", "cognome":"Rossi", "data_nascita":"1990-01-01", "Dipartimento_id_dipartimento":1 }
+{ "email":"user@example.com", "password":"pwd", "nome":"Mario", "cognome":"Rossi", "data_nascita":"1990-01-01", "sesso":"M", "numero_telefono":"+39 333 1234567", "Dipartimento_id_dipartimento":1 }
 ```
 Risposta 201:
 ```json
@@ -59,7 +59,7 @@ Risposta 201:
 Errori: MISSING_PARAMS, DUPLICATE_USER, DB_INTEGRITY_ERROR, DB_ERROR.
 
 ### 4.2 POST /api/register/manager (Pubblico)
-Come dipendente + `anni_lavorativi` (int).
+Come dipendente + `anni_lavorativi` (int). I campi `sesso` e `numero_telefono` sono OBBLIGATORI.
 Errori: come sopra + MISSING_PARAMS se campo aggiuntivo mancante.
 
 ### 4.3 POST /api/login (Pubblico)
@@ -193,9 +193,91 @@ Errori: MISSING_PARAMS, AUTH_TOKEN_INVALID, AUTH_FORBIDDEN_DEPARTMENT (manager m
 ## 9. Debug
 ### 9.1 GET /api/debug/snapshot (Sviluppo)
 Nessun input. Restituisce dump (tabelle chiave + token). NON usare in produzione.
-200: `{ "data": { "Dipartimento": [...], "Manager": [...], ... }, "message":"Snapshot OK" }`
+Include anche la tabella `push_subscriptions`. Le tabelle degli utenti espongono anche `sesso` e `numero_telefono`.
+200: `{ "data": { "Dipartimento": [...], "Manager": [{"email":"...","sesso":"...","numero_telefono":"...",...}], "Dipendente": [{"email":"...","sesso":"...","numero_telefono":"...",...}], "Progetto": [...], "TASK": [...], "push_subscriptions": [...] }, "message":"Snapshot OK" }`
 
-## 10. Riepilogo CRUD Modifica / Eliminazione
+## 10. Notifiche Push (FCM)
+
+Questa API supporta notifiche push tramite Firebase Cloud Messaging (FCM).
+
+Prerequisiti:
+- Variabile d'ambiente `FCM_CREDENTIALS_PATH` impostata e puntata al JSON del service account.
+- Il file credenziali montato nel container (read-only) e non versionato.
+- Egress verso `fcm.googleapis.com:443` abilitato.
+
+### 10.1 POST /api/push/register (Autenticato)
+Registra o aggiorna un `fcm_token` per l'utente autenticato.
+
+Input:
+```json
+{ "token": "<token_api>", "fcm_token": "<FCM_TOKEN>", "platform": "android" }
+```
+Output:
+```json
+{ "message": "Push token registrato" }
+```
+Errori: AUTH_TOKEN_MISSING, AUTH_TOKEN_INVALID, MISSING_PARAMS.
+
+Note:
+- Il token è unico (UNIQUE). Una nuova registrazione con lo stesso fcm_token aggiorna email/role/platform.
+
+### 10.2 POST /api/push/unregister (Autenticato)
+Rimuove un `fcm_token` dal backend.
+
+Input:
+```json
+{ "token": "<token_api>", "fcm_token": "<FCM_TOKEN>" }
+```
+Output:
+```json
+{ "message": "Push token rimosso" }
+```
+Errori: AUTH_TOKEN_MISSING, AUTH_TOKEN_INVALID, MISSING_PARAMS.
+
+### 10.3 (DEV) POST /api/debug/push/test
+Endpoint di sviluppo per inviare una notifica di prova.
+
+Input (fornire `email` oppure `fcm_token`):
+```json
+{ "token": "<token_api>", "email": "user@example.com", "title": "Ping", "body": "Hello", "data": {"k":"v"} }
+```
+Output successo:
+```json
+{ "data": { "tokens": ["<FCM_TOKEN>"], "result": { "success": 1, "failure": 0, "invalid": [] } } }
+```
+Output errore invio (non 500, ma 200 con payload di errore):
+```json
+{ "data": { "tokens": ["<FCM_TOKEN>"] }, "error": { "code": "FCM_SEND_FAILED", "message": "..." } }
+```
+
+Pulizia automatica:
+- In caso di `messaging/registration-token-not-registered`, il token viene rimosso da `push_subscriptions`.
+
+### 10.5 (DEV) GET /api/debug/push/status
+Verifica stato configurazione FCM lato backend.
+
+Input: nessuno
+
+Output 200:
+```json
+{
+  "data": {
+    "FCM_CREDENTIALS_PATH": "/run/secrets/firebase_service_account.json",
+    "credentials_exists": true,
+    "initialized": true
+  }
+}
+```
+Note: endpoint di diagnostica sviluppo; non esporre in produzione.
+
+### 10.4 Hook sugli eventi Task
+- Creazione Task: invia push a dipendente assegnato e manager.
+- Update Task: invia push a dipendente assegnato e manager.
+- Delete Task: invia push a dipendente assegnato e manager.
+
+L’invio è asincrono (thread best-effort) e non incide sui tempi di risposta.
+
+## 11. Riepilogo CRUD Modifica / Eliminazione
 | Endpoint | Metodo | Ruolo | Requisiti minimi | Errore specifico |
 |----------|--------|-------|------------------|------------------|
 | /api/update/Project | POST | Manager | id_progetto + id_dipartimento + ≥1 campo | MISSING_PARAMS se nessun campo |
@@ -222,4 +304,4 @@ Nessun input. Restituisce dump (tabelle chiave + token). NON usare in produzione
 * Test unitari e CI pipeline
 
 ---
-Ultimo aggiornamento: 2025-10-08
+Ultimo aggiornamento: 2025-10-12

@@ -70,6 +70,10 @@
                 <div class="col"><label class="form-label">Cognome<input class="form-control form-control-sm" name="cognome" value="Rossi" required></label></div>
               </div>
               <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Sesso<input class="form-control form-control-sm" name="sesso" placeholder="M/F/Altro" required></label></div>
+                <div class="col"><label class="form-label">Telefono<input class="form-control form-control-sm" name="numero_telefono" placeholder="es. +39 333 1234567" required></label></div>
+              </div>
+              <div class="row g-2 mb-2">
                 <div class="col"><label class="form-label">Nascita<input class="form-control form-control-sm" name="data_nascita" value="1990-01-01" required></label></div>
                 <div class="col"><label class="form-label">Dip. ID<input class="form-control form-control-sm" name="Dipartimento_id_dipartimento" value="1" required></label></div>
               </div>
@@ -95,6 +99,10 @@
               <div class="row g-2 mb-2">
                 <div class="col"><label class="form-label">Nome<input class="form-control form-control-sm" name="nome" value="Giulia" required></label></div>
                 <div class="col"><label class="form-label">Cognome<input class="form-control form-control-sm" name="cognome" value="Verdi" required></label></div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Sesso<input class="form-control form-control-sm" name="sesso" placeholder="M/F/Altro" required></label></div>
+                <div class="col"><label class="form-label">Telefono<input class="form-control form-control-sm" name="numero_telefono" placeholder="es. +39 333 1234567" required></label></div>
               </div>
               <div class="row g-2 mb-2">
                 <div class="col"><label class="form-label">Nascita<input class="form-control form-control-sm" name="data_nascita" value="1985-05-05" required></label></div>
@@ -128,6 +136,87 @@
             </form>
           </div>
           <div class="card-footer bg-body-tertiary"><pre class="out" id="outLogin"></pre></div>
+        </div>
+      </div>
+
+      <!-- Push: Registra Token -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/push/register">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Push: Registra Token</span>
+            <span class="status-chip" id="chipPushReg"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="pushReg" class="small">
+              <div class="mb-2"><label class="form-label">Token<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="any"></label></div>
+              <div class="mb-2"><label class="form-label">FCM Token<input class="form-control form-control-sm" name="fcm_token" placeholder="copincolla token dispositivo" required></label></div>
+              <div class="mb-2"><label class="form-label">Piattaforma<input class="form-control form-control-sm" name="platform" value="android"></label></div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="pushRegBody" rows="4" class="form-control form-control-sm"></textarea></details>
+              <button data-action="pushRegister" class="btn btn-sm btn-primary">Registra</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outPushReg"></pre></div>
+        </div>
+      </div>
+
+      <!-- Push: Deregistra Token -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/push/unregister">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Push: Deregistra Token</span>
+            <span class="status-chip" id="chipPushUnreg"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="pushUnreg" class="small">
+              <div class="mb-2"><label class="form-label">Token<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="any"></label></div>
+              <div class="mb-2"><label class="form-label">FCM Token<input class="form-control form-control-sm" name="fcm_token" placeholder="token da rimuovere" required></label></div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="pushUnregBody" rows="3" class="form-control form-control-sm"></textarea></details>
+              <button data-action="pushUnregister" class="btn btn-sm btn-outline-danger">Deregistra</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outPushUnreg"></pre></div>
+        </div>
+      </div>
+
+      <!-- Push: Test Notifica -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/debug/push/test">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Push: Test Notifica</span>
+            <span class="status-chip" id="chipPushTest"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="pushTest" class="small">
+              <div class="mb-2"><label class="form-label">Token<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="any"></label></div>
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Email destinatario<input class="form-control form-control-sm" name="email" placeholder="opzionale"></label></div>
+                <div class="col"><label class="form-label">FCM destinatario<input class="form-control form-control-sm" name="fcm_token" placeholder="opzionale"></label></div>
+              </div>
+              <div class="mb-2"><label class="form-label">Titolo<input class="form-control form-control-sm" name="title" value="Ping"></label></div>
+              <div class="mb-2"><label class="form-label">Messaggio<input class="form-control form-control-sm" name="body" value="Hello"></label></div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="pushTestBody" rows="5" class="form-control form-control-sm"></textarea></details>
+              <button data-action="debugPushTest" class="btn btn-sm btn-primary">Invia</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outPushTest"></pre></div>
+        </div>
+      </div>
+
+      <!-- Push: Stato -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/debug/push/status">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Push: Stato</span>
+            <span class="status-chip" id="chipPushStatus"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="pushStatus" class="small">
+              <div class="mb-2"><label class="form-label">Token<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="any"></label></div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="pushStatusBody" rows="2" class="form-control form-control-sm"></textarea></details>
+              <button data-action="debugPushStatus" class="btn btn-sm btn-outline-primary">Check</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outPushStatus"></pre></div>
         </div>
       </div>
 

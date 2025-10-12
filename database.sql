@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS Manager (
     cognome VARCHAR(50) NOT NULL,
     password VARCHAR(255) NOT NULL,
     data_nascita DATE NOT NULL,
+    sesso VARCHAR(16) NOT NULL,
+    numero_telefono VARCHAR(32) NOT NULL,
     anni_lavorativi INT NOT NULL,
     token VARCHAR(255),
     Dipartimento_id_dipartimento INT,
@@ -44,6 +46,8 @@ CREATE TABLE IF NOT EXISTS Dipendente (
     nome VARCHAR(50) NOT NULL,
     cognome VARCHAR(50) NOT NULL,
     data_nascita DATE NOT NULL,
+    sesso VARCHAR(16) NOT NULL,
+    numero_telefono VARCHAR(32) NOT NULL,
     token VARCHAR(255),
     Dipartimento_id_dipartimento INT,
     FOREIGN KEY (Dipartimento_id_dipartimento) REFERENCES Dipartimento(id_dipartimento) ON DELETE CASCADE ON UPDATE CASCADE
@@ -74,4 +78,15 @@ CREATE TABLE IF NOT EXISTS TASK (
     FOREIGN KEY (Progetto_id_progetto) REFERENCES Progetto(id_progetto) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (Dipendente_email) REFERENCES Dipendente(email) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (Manager_email) REFERENCES Manager(email) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Tabella per sottoscrizioni push (FCM)
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(100) NOT NULL,
+    role ENUM('Manager','Dipendente') NOT NULL,
+    platform VARCHAR(32) NOT NULL DEFAULT 'android',
+    fcm_token VARCHAR(255) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_email_role (email, role)
 );

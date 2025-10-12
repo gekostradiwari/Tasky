@@ -102,7 +102,9 @@ def register_manager(data):
             d.get('cognome'),
             d.get('data_nascita'),
             d.get('anni_lavorativi'),
-            d.get('Dipartimento_id_dipartimento')
+            d.get('Dipartimento_id_dipartimento'),
+            d.get('sesso'),
+            d.get('numero_telefono'),
         )
 
     # delegate to repository.handle_register which returns (jsonify, status)

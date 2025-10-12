@@ -10,6 +10,8 @@ class RegisterDipendenteSchema(Schema):
     nome = NonEmptyStr
     cognome = NonEmptyStr
     data_nascita = DateStr
+    sesso = fields.Str(required=True, validate=validate.Length(min=1, max=16))
+    numero_telefono = fields.Str(required=True, validate=validate.Length(min=5, max=32))
     Dipartimento_id_dipartimento = fields.Integer(required=True, strict=True)
 
 class RegisterManagerSchema(RegisterDipendenteSchema):
@@ -121,3 +123,24 @@ class TaskDeleteSchema(Schema):
     id = fields.Integer(required=True, strict=True)
     id_progetto = fields.Integer(required=True, strict=True)
     id_dipartimento = fields.Integer(load_default=None, strict=True)
+
+
+class PushRegisterSchema(Schema):
+    token = fields.Str(required=True)
+    fcm_token = fields.Str(required=True)
+    platform = fields.Str(load_default="android")
+
+
+class PushUnregisterSchema(Schema):
+    token = fields.Str(required=True)
+    fcm_token = fields.Str(required=True)
+
+
+class PushTestSchema(Schema):
+    token = fields.Str(required=True)
+    # One of email or fcm_token must be provided; validated in route
+    email = fields.Email(load_default=None)
+    fcm_token = fields.Str(load_default=None)
+    title = fields.Str(load_default="Test notification")
+    body = fields.Str(load_default="Hello from API")
+    data = fields.Dict(keys=fields.Str(), values=fields.Str(), load_default={})

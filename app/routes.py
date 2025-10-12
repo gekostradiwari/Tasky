@@ -20,6 +20,7 @@ from .repository import (
 )
 
 from .schemas import ProjectUpdateSchema, ProjectDeleteSchema, TaskUpdateSchema, TaskDeleteSchema
+from .schemas import PushRegisterSchema, PushUnregisterSchema, PushTestSchema
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -290,6 +291,8 @@ def _dipendente_args(d):
         d.get('cognome'),
         d.get('data_nascita'),
         d.get('Dipartimento_id_dipartimento'),
+        d.get('sesso'),
+        d.get('numero_telefono'),
     )
 
 def _manager_args(d):
@@ -301,6 +304,8 @@ def _manager_args(d):
         d.get('data_nascita'),
         d.get('anni_lavorativi'),
         d.get('Dipartimento_id_dipartimento'),
+        d.get('sesso'),
+        d.get('numero_telefono'),
     )
 
 @bp.route('/register/dipendente', methods=['POST'])
@@ -356,6 +361,43 @@ def _get_db_connection():
     return get_db_connection()
 
 
+# -------------------- Push register/unregister -------------------- #
+
+@bp.route('/push/register', methods=['POST'])
+def push_register():
+    raw = request.get_json() or {}
+    try:
+        data = PushRegisterSchema().load(raw)
+    except ValidationError as ve:
+        raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
+    user = _get_user_by_token(data.get('token'))
+    if not user:
+        from .exceptions import AuthException
+        raise AuthException("AUTH_TOKEN_INVALID", "Token non valido", 403)
+    email = (user.get('user') or {}).get('email')
+    role = user.get('type')
+    platform = data.get('platform') or 'android'
+    from .repository import upsert_push_subscription
+    upsert_push_subscription(email=email, role=role, platform=platform, fcm_token=data.get('fcm_token'))
+    return jsonify({"message": "Push token registrato"}), 200
+
+
+@bp.route('/push/unregister', methods=['POST'])
+def push_unregister():
+    raw = request.get_json() or {}
+    try:
+        data = PushUnregisterSchema().load(raw)
+    except ValidationError as ve:
+        raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
+    user = _get_user_by_token(data.get('token'))
+    if not user:
+        from .exceptions import AuthException
+        raise AuthException("AUTH_TOKEN_INVALID", "Token non valido", 403)
+    from .repository import delete_push_subscription
+    delete_push_subscription(data.get('fcm_token'))
+    return jsonify({"message": "Push token rimosso"}), 200
+
+
 @bp.route('/debug/snapshot', methods=['GET'])
 def debug_snapshot():
     """Descrizione:
@@ -369,10 +411,11 @@ def debug_snapshot():
     """
     tables = [
         ("Dipartimento", "SELECT * FROM Dipartimento ORDER BY id_dipartimento"),
-        ("Manager", "SELECT email,nome,cognome,data_nascita,anni_lavorativi,token,Dipartimento_id_dipartimento FROM Manager ORDER BY email"),
-        ("Dipendente", "SELECT email,nome,cognome,data_nascita,token,Dipartimento_id_dipartimento FROM Dipendente ORDER BY email"),
+        ("Manager", "SELECT email,nome,cognome,data_nascita,sesso,numero_telefono,anni_lavorativi,token,Dipartimento_id_dipartimento FROM Manager ORDER BY email"),
+        ("Dipendente", "SELECT email,nome,cognome,data_nascita,sesso,numero_telefono,token,Dipartimento_id_dipartimento FROM Dipendente ORDER BY email"),
         ("Progetto", "SELECT * FROM Progetto ORDER BY id_progetto"),
         ("TASK", "SELECT * FROM TASK ORDER BY id"),
+        ("push_subscriptions", "SELECT * FROM push_subscriptions ORDER BY id"),
     ]
     conn = _get_db_connection()
     snapshot = {}
@@ -384,6 +427,73 @@ def debug_snapshot():
         return jsonify({"data": snapshot, "message": "Snapshot OK"}), 200
     finally:
         conn.close()
+
+
+@bp.route('/debug/push/test', methods=['POST'])
+def debug_push_test():
+    """DEV: invia una notifica di test ad un'email registrata o direttamente ad un fcm_token.
+
+    Input JSON: { token: str, email?: str, fcm_token?: str, title?: str, body?: str, data?: {..} }
+    Requisiti: almeno uno tra email e fcm_token.
+    """
+    raw = request.get_json() or {}
+    try:
+        data = PushTestSchema().load(raw)
+    except ValidationError as ve:
+        raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
+
+    user = _get_user_by_token(data.get('token'))
+    if not user:
+        from .exceptions import AuthException
+        raise AuthException("AUTH_TOKEN_INVALID", "Token non valido", 403)
+
+    tokens = []
+    if data.get('email'):
+        from .repository import get_tokens_for_users
+        tokens = get_tokens_for_users([data['email']])
+    if data.get('fcm_token'):
+        tokens = list(set(tokens + [data['fcm_token']]))
+
+    if not tokens:
+        return jsonify({"message": "Nessun token trovato"}), 200
+
+    from .notifications import send_to_tokens
+    try:
+        result = send_to_tokens(tokens, data.get('title') or 'Test', data.get('body') or 'Hello', data.get('data') or {})
+    except Exception as e:
+        # Non propagare: mostra info utili in DEV
+        return jsonify({
+            "data": {"tokens": tokens},
+            "error": {"code": "FCM_SEND_FAILED", "message": str(e)[:500]}
+        }), 200
+
+    # Pulizia token invalidi
+    invalid = result.get('invalid') or []
+    if invalid:
+        from .repository import delete_push_subscription
+        for t in invalid:
+            delete_push_subscription(t)
+
+    return jsonify({"data": {"tokens": tokens, "result": result}}), 200
+
+
+@bp.route('/debug/push/status', methods=['GET'])
+def debug_push_status():
+    import os
+    cred_path = os.environ.get('FCM_CREDENTIALS_PATH')
+    exists = bool(cred_path and os.path.exists(cred_path))
+    try:
+        from .notifications import is_ready
+        ready = is_ready()
+    except Exception:
+        ready = False
+    return jsonify({
+        "data": {
+            "FCM_CREDENTIALS_PATH": cred_path,
+            "credentials_exists": exists,
+            "initialized": bool(ready)
+        }
+    }), 200
 
 # -------------------- Update / Delete Endpoints -------------------- #
 

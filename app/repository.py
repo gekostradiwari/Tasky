@@ -6,6 +6,7 @@ from .exceptions import ServerException, ValidationException, AuthException
 from .db import get_db_connection
 from flask import jsonify
 from datetime import date, datetime
+import threading
 
 
 def _fmt_date(val):
@@ -23,6 +24,48 @@ def _format_items_dates(items, date_keys):
             if k in it:
                 it[k] = _fmt_date(it[k])
     return items
+
+# -------------------- Push subscriptions helpers -------------------- #
+
+def upsert_push_subscription(email: str, role: str, platform: str, fcm_token: str):
+    """Insert or update a push subscription row by fcm_token (unique)."""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = (
+                "INSERT INTO push_subscriptions (email, role, platform, fcm_token) "
+                "VALUES (%s,%s,%s,%s) "
+                "ON DUPLICATE KEY UPDATE email=VALUES(email), role=VALUES(role), platform=VALUES(platform)"
+            )
+            cursor.execute(sql, (email, role, platform, fcm_token))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def delete_push_subscription(fcm_token: str):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM push_subscriptions WHERE fcm_token=%s", (fcm_token,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_tokens_for_users(emails: list[str]):
+    if not emails:
+        return []
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            placeholders = ",".join(["%s"] * len(emails))
+            sql = f"SELECT fcm_token FROM push_subscriptions WHERE email IN ({placeholders})"
+            cursor.execute(sql, emails)
+            rows = cursor.fetchall() or []
+            return [r.get('fcm_token') for r in rows if r.get('fcm_token')]
+    finally:
+        conn.close()
 
 def handle_numero_dipendenti(data, get_db_connection_fn):
     """Descrizione:
@@ -72,6 +115,28 @@ def handle_task(data, insert_func, args_builder, success_message='Created'):
     except Exception as e:
         integrity_errors_project(e)
         raise ServerException(details={"orig": str(e)})
+
+    # Fire-and-forget notification to assigned users (best-effort)
+    try:
+        id_progetto = data.get('id_progetto')
+        email_dip = data.get('email_dipendente')
+        email_mgr = data.get('email_manager')
+        recipients = [e for e in {email_dip, email_mgr} if e]
+        if recipients:
+            _notify_emails(
+                recipients,
+                title="Task creata",
+                body=f"Nuova task nel progetto {id_progetto}",
+                data={
+                    "type": "task.create",
+                    "id": str(id),
+                    "id_progetto": str(id_progetto),
+                    "stato": str(data.get('stato', '')),
+                },
+            )
+    except Exception:
+        # non bloccare la response
+        pass
 
     return jsonify({"data": {"id_task": id}, "message": success_message}), 201
 
@@ -362,7 +427,7 @@ def handle_dipendenti_by_department(data, get_db_connection_fn):
     conn = get_db_connection_fn()
     try:
         with conn.cursor() as cursor:
-            sql = sql_select_helper('Dipendente', columns=['email','nome','cognome','data_nascita'], where_cols=['Dipartimento_id_dipartimento'], order_by='email')
+            sql = sql_select_helper('Dipendente', columns=['email','nome','cognome','data_nascita','sesso','numero_telefono'], where_cols=['Dipartimento_id_dipartimento'], order_by='email')
             cursor.execute(sql, (dept_id,))
             items = cursor.fetchall() or []
         return {"items": items, "count": len(items)}
@@ -397,7 +462,7 @@ def handle_dipendenti_data_by_department(data, get_db_connection_fn):
     try:
         with conn.cursor() as cursor:
             # Select explicit non-sensitive columns. Exclude `password` and `token`.
-            sql = sql_select_helper('Dipendente', columns=['email','nome','cognome','data_nascita','Dipartimento_id_dipartimento'], where_cols=['Dipartimento_id_dipartimento'], order_by='email')
+            sql = sql_select_helper('Dipendente', columns=['email','nome','cognome','data_nascita','sesso','numero_telefono','Dipartimento_id_dipartimento'], where_cols=['Dipartimento_id_dipartimento'], order_by='email')
             cursor.execute(sql, (dept_id,))
             items = cursor.fetchall() or []
         return {"items": items, "count": len(items)}
@@ -521,7 +586,7 @@ def handle_dipendenti_by_project(data, get_user_by_token_fn, get_db_connection_f
             with conn.cursor() as cursor:
                 sql = sql_select_helper(
                     table='Dipendente d',
-                    columns=['DISTINCT d.email','d.nome','d.cognome','d.data_nascita'],
+                    columns=['DISTINCT d.email','d.nome','d.cognome','d.data_nascita','d.sesso','d.numero_telefono'],
                     joins=[{'type':'JOIN','table':'TASK','alias':'t','on':'t.Dipendente_email = d.email'}],
                     where_cols=['d.Dipartimento_id_dipartimento'],
                     where_exprs=['t.Progetto_id_progetto=%s'],
@@ -540,7 +605,7 @@ def handle_dipendenti_by_project(data, get_user_by_token_fn, get_db_connection_f
             with conn.cursor() as cursor:
                 sql = sql_select_helper(
                     table='Dipendente d',
-                    columns=['DISTINCT d.email','d.nome','d.cognome','d.data_nascita'],
+                    columns=['DISTINCT d.email','d.nome','d.cognome','d.data_nascita','d.sesso','d.numero_telefono'],
                     joins=[{'type':'JOIN','table':'TASK','alias':'t','on':'t.Dipendente_email = d.email'}],
                     where_exprs=['t.Progetto_id_progetto=%s'],
                     where_cols=['d.email'],
@@ -611,7 +676,7 @@ def handle_managers_by_project(data, get_user_by_token_fn, get_db_connection_fn)
             with conn.cursor() as cursor:
                 sql = sql_select_helper(
                     table='Manager m',
-                    columns=['DISTINCT m.email','m.nome','m.cognome','m.data_nascita'],
+                    columns=['DISTINCT m.email','m.nome','m.cognome','m.data_nascita','m.sesso','m.numero_telefono'],
                     joins=[{'type':'JOIN','table':'TASK','alias':'t','on':'t.Manager_email = m.email'}],
                     where_cols=['m.Dipartimento_id_dipartimento'],
                     where_exprs=['t.Progetto_id_progetto=%s'],
@@ -630,7 +695,7 @@ def handle_managers_by_project(data, get_user_by_token_fn, get_db_connection_fn)
             with conn.cursor() as cursor:
                 sql = sql_select_helper(
                     table='Manager m',
-                    columns=['DISTINCT m.email','m.nome','m.cognome','m.data_nascita'],
+                    columns=['DISTINCT m.email','m.nome','m.cognome','m.data_nascita','m.sesso','m.numero_telefono'],
                     joins=[{'type':'JOIN','table':'TASK','alias':'t','on':'t.Manager_email = m.email'}],
                     where_exprs=['t.Progetto_id_progetto=%s','t.Dipendente_email=%s'],
                     order_by='m.email'
@@ -752,7 +817,7 @@ def _insert_user(table: str, columns: list, values: tuple) -> str:
         pass
     return values[-1]
 
-def insertDipendente(email: str, password: str, nome: str, cognome: str, data_nascita: str, Dipartimento_id_dipartimento: int) -> str:
+def insertDipendente(email: str, password: str, nome: str, cognome: str, data_nascita: str, Dipartimento_id_dipartimento: int, sesso: str | None = None, numero_telefono: str | None = None) -> str:
     """Descrizione:
     Inserisce un nuovo Dipendente generando un token e aggiorna
     atomicamente il campo denormalizzato `Dipartimento.numero_dipendenti`.
@@ -770,9 +835,9 @@ def insertDipendente(email: str, password: str, nome: str, cognome: str, data_na
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            cols = ['email','password','nome','cognome','data_nascita','Dipartimento_id_dipartimento','token']
+            cols = ['email','password','nome','cognome','data_nascita','sesso','numero_telefono','Dipartimento_id_dipartimento','token']
             sql = sql_insert_helper('Dipendente', cols)
-            cursor.execute(sql, (email, password, nome, cognome, data_nascita, Dipartimento_id_dipartimento, token))
+            cursor.execute(sql, (email, password, nome, cognome, data_nascita, sesso, numero_telefono, Dipartimento_id_dipartimento, token))
             cursor.execute(
                 "UPDATE Dipartimento SET numero_dipendenti = numero_dipendenti + 1 WHERE id_dipartimento=%s",
                 (Dipartimento_id_dipartimento,)
@@ -1005,6 +1070,24 @@ def handle_update_task(data, update_func=updateTask, get_tasks_fn=get_tasks_from
     # return full task list of project
     items = get_tasks_fn(idp) or []
     _format_items_dates(items, ['data_inizio','data_fine'])
+
+    # Notify assigned users (best-effort, async)
+    try:
+        recipients = [e for e in {updated.get('Dipendente_email'), updated.get('Manager_email')} if e]
+        if recipients:
+            _notify_emails(
+                recipients,
+                title="Task aggiornata",
+                body=f"Task {idt} aggiornata nel progetto {idp}",
+                data={
+                    "type": "task.update",
+                    "id": str(idt),
+                    "id_progetto": str(idp),
+                    "stato": str(updated.get('stato', '')),
+                },
+            )
+    except Exception:
+        pass
     return {"items": items, "count": len(items)}
 
 def handle_delete_task(data, delete_func=deleteTask, get_tasks_fn=get_tasks_from_project):
@@ -1016,6 +1099,16 @@ def handle_delete_task(data, delete_func=deleteTask, get_tasks_fn=get_tasks_from
         if idt is None: missing['id'] = ["Missing data for required field."]
         if idp is None: missing['id_progetto'] = ["Missing data for required field."]
         raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": missing})
+    # fetch before delete per notification recipients
+    conn = get_db_connection()
+    row_before = None
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM TASK WHERE id=%s AND Progetto_id_progetto=%s", (idt, idp))
+            row_before = cursor.fetchone()
+    finally:
+        conn.close()
+
     try:
         ok = delete_func(idt, idp)
     except Exception as e:
@@ -1024,9 +1117,55 @@ def handle_delete_task(data, delete_func=deleteTask, get_tasks_fn=get_tasks_from
         raise NotFoundException("Task non trovata")
     items = get_tasks_fn(idp) or []
     _format_items_dates(items, ['data_inizio','data_fine'])
+
+    # Notify assigned users (best-effort, async)
+    try:
+        recipients = []
+        if row_before:
+            recipients = [e for e in {row_before.get('Dipendente_email'), row_before.get('Manager_email')} if e]
+        if recipients:
+            _notify_emails(
+                recipients,
+                title="Task eliminata",
+                body=f"Task {idt} eliminata dal progetto {idp}",
+                data={
+                    "type": "task.delete",
+                    "id": str(idt),
+                    "id_progetto": str(idp),
+                },
+            )
+    except Exception:
+        pass
     return {"items": items, "count": len(items)}
 
-def insertManager(email: str, password: str, nome: str, cognome: str, data_nascita: str, anni_lavorativi: int, Dipartimento_id_dipartimento: int) -> str:
+
+# -------------------- Notification helpers -------------------- #
+def _notify_emails(emails: list[str], title: str, body: str, data: dict):
+    if not emails:
+        return
+    # Resolve tokens, then send async and cleanup invalid tokens
+    tokens = get_tokens_for_users(emails)
+    if not tokens:
+        return
+
+    def _worker(tok_list: list[str]):
+        try:
+            from .notifications import send_to_tokens
+            result = send_to_tokens(tok_list, title, body, data)
+            invalid = result.get('invalid') or []
+            if invalid:
+                for t in invalid:
+                    try:
+                        delete_push_subscription(t)
+                    except Exception:
+                        pass
+        except Exception:
+            # swallow errors in async path
+            pass
+
+    threading.Thread(target=_worker, args=(tokens,), daemon=True).start()
+
+def insertManager(email: str, password: str, nome: str, cognome: str, data_nascita: str, anni_lavorativi: int, Dipartimento_id_dipartimento: int, sesso: str | None = None, numero_telefono: str | None = None) -> str:
     """Descrizione:
     Inserisce un Manager generando un token.
 
@@ -1038,9 +1177,9 @@ def insertManager(email: str, password: str, nome: str, cognome: str, data_nasci
     """
     token = generateToken()
     columns = [
-        'email','password','nome','cognome','data_nascita','anni_lavorativi','Dipartimento_id_dipartimento','token'
+        'email','password','nome','cognome','data_nascita','sesso','numero_telefono','anni_lavorativi','Dipartimento_id_dipartimento','token'
     ]
-    values = (email, password, nome, cognome, data_nascita, anni_lavorativi, Dipartimento_id_dipartimento, token)
+    values = (email, password, nome, cognome, data_nascita, sesso, numero_telefono, anni_lavorativi, Dipartimento_id_dipartimento, token)
     return _insert_user('Manager', columns, values)
 
 

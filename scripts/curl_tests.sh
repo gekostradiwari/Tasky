@@ -85,7 +85,7 @@ cat <<EOF
 
 === Register Dipendente ===
 EOF
-DIP_PAYLOAD="{\"email\":\"$DIP_EMAIL\",\"password\":\"pwd\",\"nome\":\"Nome\",\"cognome\":\"Cognome\",\"data_nascita\":\"1990-01-01\",\"Dipartimento_id_dipartimento\":1}"
+DIP_PAYLOAD="{\"email\":\"$DIP_EMAIL\",\"password\":\"pwd\",\"nome\":\"Nome\",\"cognome\":\"Cognome\",\"data_nascita\":\"1990-01-01\",\"sesso\":\"M\",\"numero_telefono\":\"+39 333 1111111\",\"Dipartimento_id_dipartimento\":1}"
 DIP_ALL=$(handle_register "/api/register/dipendente" "$DIP_PAYLOAD" "Dipendente")
 echo "$DIP_ALL"
 DIP_TOKEN=$(echo "$DIP_ALL" | tail -n1)
@@ -147,7 +147,7 @@ cat <<EOF
 
 === Register Manager ===
 EOF
-MGR_PAYLOAD="{\"email\":\"$MGR_EMAIL\",\"password\":\"pwd\",\"nome\":\"Mario\",\"cognome\":\"Rossi\",\"data_nascita\":\"1980-01-01\",\"anni_lavorativi\":5,\"Dipartimento_id_dipartimento\":1}"
+MGR_PAYLOAD="{\"email\":\"$MGR_EMAIL\",\"password\":\"pwd\",\"nome\":\"Mario\",\"cognome\":\"Rossi\",\"data_nascita\":\"1980-01-01\",\"sesso\":\"M\",\"numero_telefono\":\"+39 333 2222222\",\"anni_lavorativi\":5,\"Dipartimento_id_dipartimento\":1}"
 MGR_ALL=$(handle_register "/api/register/manager" "$MGR_PAYLOAD" "Manager")
 echo "$MGR_ALL"
 MGR_TOKEN=$(echo "$MGR_ALL" | tail -n1)
