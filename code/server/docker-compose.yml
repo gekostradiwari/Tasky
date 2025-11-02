@@ -17,10 +17,13 @@ services:
       DB_PASSWORD: rootpassword
       DB_NAME: TasksManager
       PORT: 5001
+      FCM_CREDENTIALS_PATH: /run/secrets/fcm_service_account.json
     depends_on:
       - db
     ports:
       - "${API_PORT:-5001}:5001"
+    volumes:
+      - ./tasky-694f6-firebase-adminsdk-fbsvc-9c26bccc48.json:/run/secrets/fcm_service_account.json:ro
 
   docs:
     build:
