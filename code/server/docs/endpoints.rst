@@ -207,7 +207,7 @@ Request:
 Response 200:
 .. code-block:: json
 
-  { "message": "Login effettuato", "data": { "token": "<TOKEN_MANAGER>", "type": "Manager" } }
+  { "message": "Login effettuato", "data": { "token": "<TOKEN_MANAGER>", "type": "Manager", "id_dipartimento": 1, "sesso": "M" } }
 
 **4. Login (con token)**  
 Request:
@@ -217,7 +217,7 @@ Request:
 Response 200 (stessa struttura):
 .. code-block:: json
 
-  { "message": "Login effettuato", "data": { "token": "<TOKEN_MANAGER>", "type": "Manager" } }
+  { "message": "Login effettuato", "data": { "token": "<TOKEN_MANAGER>", "type": "Manager", "id_dipartimento": 1, "sesso": "M" } }
 
 **5. Creazione Dipartimento**  
 Request:
