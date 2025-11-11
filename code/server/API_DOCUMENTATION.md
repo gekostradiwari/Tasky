@@ -66,7 +66,7 @@ Errori: come sopra + MISSING_PARAMS se campo aggiuntivo mancante.
 Varianti input: `{ "token":"..." }` oppure `{ "email":"...", "password":"..." }`.
 Risposta 200:
 ```json
-{ "message":"Login effettuato", "data": { "token":"<token>", "type":"Manager|Dipendente" } }
+{ "message":"Login effettuato", "data": { "token":"<token>", "type":"Manager|Dipendente", "id_dipartimento": 1, "sesso": "M" } }
 ```
 Errori: MISSING_CREDENTIALS, INVALID_CREDENTIALS, AUTH_TOKEN_INVALID.
 

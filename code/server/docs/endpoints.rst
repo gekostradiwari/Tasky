@@ -141,6 +141,18 @@ Legenda colonne:
      - –
      - data.items[], count, scope
      - AUTH_*, MISSING_PARAMS
+   * - POST /push/register
+     - Autenticato
+     - token, fcm_token, (platform)
+     - –
+     - message
+     - AUTH_*, MISSING_PARAMS
+   * - POST /push/unregister
+     - Autenticato
+     - token, fcm_token
+     - –
+     - message
+     - AUTH_*, MISSING_PARAMS
 
 Esempi JSON
 ===========
@@ -195,7 +207,7 @@ Request:
 Response 200:
 .. code-block:: json
 
-  { "message": "Login effettuato", "data": { "token": "<TOKEN_MANAGER>", "type": "Manager" } }
+  { "message": "Login effettuato", "data": { "token": "<TOKEN_MANAGER>", "type": "Manager", "id_dipartimento": 1, "sesso": "M" } }
 
 **4. Login (con token)**  
 Request:
@@ -205,7 +217,7 @@ Request:
 Response 200 (stessa struttura):
 .. code-block:: json
 
-  { "message": "Login effettuato", "data": { "token": "<TOKEN_MANAGER>", "type": "Manager" } }
+  { "message": "Login effettuato", "data": { "token": "<TOKEN_MANAGER>", "type": "Manager", "id_dipartimento": 1, "sesso": "M" } }
 
 **5. Creazione Dipartimento**  
 Request:
@@ -452,6 +464,44 @@ Response 200 (visibilità own -> potrebbe essere vuoto o limitato):
 .. code-block:: json
 
   { "data": { "items": [], "count": 0, "scope": "own" } }
+
+---
+**25. Push Register**  
+Request:
+.. code-block:: json
+
+  { "token": "<TOKEN_AUTH>", "fcm_token": "<FCM_TOKEN>", "platform": "android" }
+Response 200:
+.. code-block:: json
+
+  { "message": "Push token registrato" }
+
+**26. Push Unregister**  
+Request:
+.. code-block:: json
+
+  { "token": "<TOKEN_AUTH>", "fcm_token": "<FCM_TOKEN>" }
+Response 200:
+.. code-block:: json
+
+  { "message": "Push token rimosso" }
+
+**27. (DEV) Debug Push Test**  
+Nota: endpoint di sviluppo, non esporre in produzione.
+Request (una tra email o fcm_token):
+.. code-block:: json
+
+  { "token": "<TOKEN_AUTH>", "email": "user@example.com", "title": "Ping", "body": "Hello" }
+
+Response 200 (successo o errore incapsulato):
+.. code-block:: json
+
+  { "data": { "tokens": ["<FCM_TOKEN>", "..."] , "result": { "success": 1, "failure": 0, "invalid": [] } } }
+
+Oppure, in caso di errore invio FCM (sempre 200 per test):
+.. code-block:: json
+
+  { "data": { "tokens": ["<FCM_TOKEN>"] }, "error": { "code": "FCM_SEND_FAILED", "message": "..." } }
 
 ---
 Fine esempi.

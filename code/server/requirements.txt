@@ -2,3 +2,5 @@ flask
 PyMySQL
 cryptography
 marshmallow
+
+firebase-admin

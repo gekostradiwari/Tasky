@@ -150,7 +150,7 @@ Modalità alternative:
 2. `{ "email": "...", "password": "..." }`
 Successo 200:
 ```json
-{ "message": "Login effettuato", "data": { "token": "...", "type": "Manager" } }
+{ "message": "Login effettuato", "data": { "token": "...", "type": "Manager", "id_dipartimento": 1, "sesso": "M" } }
 ```
 
 ### Creazione Progetto

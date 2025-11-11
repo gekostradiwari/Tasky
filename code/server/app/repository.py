@@ -750,7 +750,19 @@ def handle_login(data):
     tag = decision[0]
     if tag == 'ok_token':
         _, token, tipo = decision
-        return jsonify({"data": {"token": token, "type": tipo}, "message": "Login effettuato"}), 200
+        # Include department id and sesso in response
+        dept_id = None
+        sesso = None
+        try:
+            user_wrap = get_user_by_token(token)
+            if user_wrap and user_wrap.get('user'):
+                user = user_wrap['user']
+                dept_id = user.get('Dipartimento_id_dipartimento')
+                sesso = user.get('sesso')
+        except Exception:
+            dept_id = None
+            sesso = None
+        return jsonify({"data": {"token": token, "type": tipo, "id_dipartimento": dept_id, "sesso": sesso}, "message": "Login effettuato"}), 200
     
     if tag == 'invalid_token':
         raise AuthException("AUTH_TOKEN_INVALID", "Token non valido", 403)
@@ -760,7 +772,19 @@ def handle_login(data):
     
     if tag == 'ok':
         _, token, tipo = decision
-        return jsonify({"data": {"token": token, "type": tipo}, "message": "Login effettuato"}), 200
+        # Include department id and sesso in response
+        dept_id = None
+        sesso = None
+        try:
+            user_wrap = get_user_by_token(token)
+            if user_wrap and user_wrap.get('user'):
+                user = user_wrap['user']
+                dept_id = user.get('Dipartimento_id_dipartimento')
+                sesso = user.get('sesso')
+        except Exception:
+            dept_id = None
+            sesso = None
+        return jsonify({"data": {"token": token, "type": tipo, "id_dipartimento": dept_id, "sesso": sesso}, "message": "Login effettuato"}), 200
     
     raise AuthException("INVALID_CREDENTIALS", "Email o password non valide", 401)
 
