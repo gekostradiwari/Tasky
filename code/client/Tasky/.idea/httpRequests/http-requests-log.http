@@ -1,0 +1,30 @@
+POST http://localhost:5001/api/login
+User-Agent: IntelliJ HTTP Client/Android Studio Narwhal 4 Feature Drop | 2025.1.4
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+content-length: 0
+
+<> 2025-10-19T201747.415.json
+
+###
+
+POST http://localhost:5001/api/login
+User-Agent: IntelliJ HTTP Client/Android Studio Narwhal 4 Feature Drop | 2025.1.4
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+content-length: 0
+
+<> 2025-10-19T180613.415.json
+
+###
+
+POST http://localhost:5001/login
+User-Agent: IntelliJ HTTP Client/Android Studio Narwhal 4 Feature Drop | 2025.1.4
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+content-length: 0
+
+<> 2025-10-19T180548.404.json
+
+###
+
