@@ -740,7 +740,7 @@ def handle_login(data):
     - data (dict): token oppure email & password (già validati nello strato route).
 
     Output:
-    - (Flask Response, 200) con {token, type} in caso di successo.
+    - (Flask Response, 200) con {token, type, id_dipartimento, nome_dipartimento, nome_dipendente, sesso} in caso di successo.
     - Eccezioni: AuthException, ValidationException.
     """
     from .utils import decide_login, crypt
@@ -748,45 +748,59 @@ def handle_login(data):
     decision = decide_login(data, get_user_by_token, getManager, getDipendente, crypt)
 
     tag = decision[0]
-    if tag == 'ok_token':
-        _, token, tipo = decision
-        # Include department id and sesso in response
-        dept_id = None
-        sesso = None
-        try:
-            user_wrap = get_user_by_token(token)
-            if user_wrap and user_wrap.get('user'):
-                user = user_wrap['user']
-                dept_id = user.get('Dipartimento_id_dipartimento')
-                sesso = user.get('sesso')
-        except Exception:
-            dept_id = None
-            sesso = None
-        return jsonify({"data": {"token": token, "type": tipo, "id_dipartimento": dept_id, "sesso": sesso}, "message": "Login effettuato"}), 200
-    
+
     if tag == 'invalid_token':
         raise AuthException("AUTH_TOKEN_INVALID", "Token non valido", 403)
-    
     if tag == 'missing_credentials':
         raise ValidationException("MISSING_CREDENTIALS", "Email o password mancanti", 400)
-    
-    if tag == 'ok':
-        _, token, tipo = decision
-        # Include department id and sesso in response
-        dept_id = None
-        sesso = None
-        try:
-            user_wrap = get_user_by_token(token)
-            if user_wrap and user_wrap.get('user'):
-                user = user_wrap['user']
-                dept_id = user.get('Dipartimento_id_dipartimento')
-                sesso = user.get('sesso')
-        except Exception:
-            dept_id = None
-            sesso = None
-        return jsonify({"data": {"token": token, "type": tipo, "id_dipartimento": dept_id, "sesso": sesso}, "message": "Login effettuato"}), 200
-    
-    raise AuthException("INVALID_CREDENTIALS", "Email o password non valide", 401)
+    if tag not in ('ok', 'ok_token'):
+        raise AuthException("INVALID_CREDENTIALS", "Email o password non valide", 401)
+
+    # Unified handling for successful login (via token or credentials)
+    _, token, tipo = decision
+
+    dept_id = None
+    sesso = None
+    display_name = None
+    nome_dipartimento = None
+    try:
+        user_wrap = get_user_by_token(token)
+        if user_wrap and user_wrap.get('user'):
+            user = user_wrap['user']
+            dept_id = user.get('Dipartimento_id_dipartimento')
+            sesso = user.get('sesso')
+            nome = (user.get('nome') or '').strip()
+            cognome = (user.get('cognome') or '').strip()
+            if nome:
+                # Build display name "Nome C." if cognome presente
+                if cognome:
+                    display_name = f"{nome.capitalize()} {cognome[0].upper()}."
+                else:
+                    display_name = nome.capitalize()
+            # Fetch department name if we have an id
+            if dept_id is not None:
+                conn = get_db_connection()
+                try:
+                    with conn.cursor() as cursor:
+                        cursor.execute("SELECT nome FROM Dipartimento WHERE id_dipartimento=%s", (dept_id,))
+                        row = cursor.fetchone() or {}
+                        nome_dipartimento = row.get('nome')
+                finally:
+                    conn.close()
+    except Exception:
+        pass
+
+    return jsonify({
+        "data": {
+            "token": token,
+            "type": tipo,
+            "id_dipartimento": dept_id,
+            "nome_dipartimento": nome_dipartimento,
+            "name": display_name,
+            "sesso": sesso
+        },
+        "message": "Login effettuato"
+    }), 200
 
 def handle_register(data, insert_func, args_builder, success_message='Created'):
     """Descrizione:
