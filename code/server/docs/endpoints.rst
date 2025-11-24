@@ -107,7 +107,7 @@ Legenda colonne:
      - MISSING_PARAMS
    * - POST /add/Task
      - Manager
-     - token, stato, descrizione, data_inizio, data_fine, id_progetto, id_dipartimento, email_dipendente, email_manager, (id)
+     - token, nome, stato, descrizione, data_inizio, data_fine, id_progetto, id_dipartimento, email_dipendente, email_manager, (id)
      - –
      - data.id_task
      - AUTH_*, MISSING_PARAMS, DB_INTEGRITY_ERROR
@@ -381,8 +381,9 @@ Request:
 
   {
     "token": "<TOKEN_MANAGER>",
+    "nome": "Setup ambiente",
     "stato": "Open",
-    "descrizione": "Setup ambiente",
+    "descrizione": "Configurazione iniziale ambiente di sviluppo",
     "data_inizio": "2025-02-01",
     "data_fine": "2025-02-15",
     "id_progetto": 101,
@@ -396,7 +397,7 @@ Response 201:
   { "data": { "id_task": 7 }, "message": "Task inserita correttamente" }
 
 **18. Update Task**  
-Request (almeno un campo aggiornabile):
+Request (almeno un campo aggiornabile: nome, stato, descrizione, data_inizio, data_fine, email_dipendente, email_manager):
 .. code-block:: json
 
   { "token": "<TOKEN_MANAGER>", "id": 7, "id_progetto": 101, "id_dipartimento": 1, "stato": "InProgress" }
