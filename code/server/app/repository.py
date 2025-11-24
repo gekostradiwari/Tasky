@@ -140,12 +140,13 @@ def handle_task(data, insert_func, args_builder, success_message='Created'):
 
     return jsonify({"data": {"id_task": id}, "message": success_message}), 201
 
-def insertTask(id_task, stato, descrizione, data_inizio, data_fine, id_progetto, dipendente_email=None, manager_email=None):
+def insertTask(id_task, nome, stato, descrizione, data_inizio, data_fine, id_progetto, dipendente_email=None, manager_email=None):
     """Descrizione:
     Inserisce un record nella tabella TASK.
 
     Input:
     - id_task (int|None): se None usa AUTO_INCREMENT, altrimenti inserimento con id esplicito.
+    - nome (str): nome della task.
     - stato (str): stato (<=50 char).
     - descrizione (str): descrizione testuale.
     - data_inizio (str YYYY-MM-DD)
@@ -162,14 +163,14 @@ def insertTask(id_task, stato, descrizione, data_inizio, data_fine, id_progetto,
     try:
         with conn.cursor() as cursor:
             if id_task is None:
-                cols = ["stato","descrizione","data_inizio","data_fine","Progetto_id_progetto","Dipendente_email","Manager_email"]
+                cols = ["nome","stato","descrizione","data_inizio","data_fine","Progetto_id_progetto","Dipendente_email","Manager_email"]
                 sql = sql_insert_helper('TASK', cols)
-                cursor.execute(sql, (stato, descrizione, data_inizio, data_fine, id_progetto, dipendente_email, manager_email))
+                cursor.execute(sql, (nome, stato, descrizione, data_inizio, data_fine, id_progetto, dipendente_email, manager_email))
                 new_id = cursor.lastrowid
             else:
-                cols = ["id","stato","descrizione","data_inizio","data_fine","Progetto_id_progetto","Dipendente_email","Manager_email"]
+                cols = ["id","nome","stato","descrizione","data_inizio","data_fine","Progetto_id_progetto","Dipendente_email","Manager_email"]
                 sql = sql_insert_helper('TASK', cols)
-                cursor.execute(sql, (id_task, stato, descrizione, data_inizio, data_fine, id_progetto, dipendente_email, manager_email))
+                cursor.execute(sql, (id_task, nome, stato, descrizione, data_inizio, data_fine, id_progetto, dipendente_email, manager_email))
                 new_id = id_task
         conn.commit()
     finally:
@@ -966,7 +967,7 @@ def updateTask(id_task: int, id_progetto: int, updates: dict):
     """
     if not updates:
         return None
-    allowed = {"stato","descrizione","data_inizio","data_fine","Dipendente_email","Manager_email"}
+    allowed = {"nome","stato","descrizione","data_inizio","data_fine","Dipendente_email","Manager_email"}
     cols = [c for c in updates.keys() if c in allowed]
     if not cols:
         return None
@@ -1082,6 +1083,7 @@ def handle_update_task(data, update_func=updateTask, get_tasks_fn=get_tasks_from
         if idp is None: missing['id_progetto'] = ["Missing data for required field."]
         raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": missing})
     field_mapping = {
+        'nome': 'nome',
         'stato': 'stato',
         'descrizione': 'descrizione',
         'data_inizio': 'data_inizio',

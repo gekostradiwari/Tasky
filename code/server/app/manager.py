@@ -35,6 +35,7 @@ def add_task(data):
     def dip_args(d):
         return (
             d.get("id"),
+            d.get("nome"),
             d.get("stato"),
             d.get("descrizione"),
             str(d.get("data_inizio")),

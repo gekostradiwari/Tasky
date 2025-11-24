@@ -60,6 +60,7 @@ class DepartmentCreateSchema(Schema):
 class TaskCreateSchema(Schema):
     token = fields.Str(required=True)
     id = fields.Integer(load_default=None)
+    nome = NonEmptyStr
     stato = NonEmptyStr
     descrizione = NonEmptyStr
     data_inizio = DateStr
@@ -110,6 +111,7 @@ class TaskUpdateSchema(Schema):
     id = fields.Integer(required=True, strict=True)
     id_progetto = fields.Integer(required=True, strict=True)
     id_dipartimento = fields.Integer(load_default=None, strict=True)
+    nome = fields.Str(load_default=None)
     stato = fields.Str(load_default=None)
     descrizione = fields.Str(load_default=None)
     data_inizio = fields.Date(load_default=None, format="%Y-%m-%d")
