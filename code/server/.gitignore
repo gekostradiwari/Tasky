@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual envs
+.venv/
+venv/
+
+# Editor/OS
+.vscode/
+.DS_Store
+
+# Secrets
+secrets/
+*.secret.json
+*firebase-adminsdk*.json
+*service-account*.json
+*.serviceaccount.json
+.env
+.env.*
+*.env
+
+# Logs
+*.log
+logs/
+
+# Node/tester cache (if any)
+node_modules/
+
+# Android tester app (do NOT commit test app for notifications)
+android/testingANDROID/
+
+# Android common artifacts
+android/**/.gradle/
+android/**/build/
+android/**/.idea/
+android/**/local.properties
+android/**/*.iml
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Firebase config (avoid committing by default)
+google-services.json
+
+# Generated outputs/archives
+scripts/output/
+tasky-notify.zip

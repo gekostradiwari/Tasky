@@ -7,7 +7,7 @@ services:
       - db_data:/var/lib/mysql
       - ./database.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
-      - "2222:2222"
+      - "3306:3306"
 
   api:
     build: .
@@ -24,6 +24,7 @@ services:
       - "${API_PORT:-5001}:5001"
     volumes:
       - ./tasky-694f6-firebase-adminsdk-fbsvc-9c26bccc48.json:/run/secrets/fcm_service_account.json:ro
+      - ./logs:/app/logs
 
   docs:
     build:
