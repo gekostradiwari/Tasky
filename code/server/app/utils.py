@@ -1,15 +1,84 @@
 def crypt(x: str) -> str:
     """Descrizione:
-    Calcola l'hash SHA256 della stringa fornita.
+    Genera hash sicuro della password usando bcrypt con salt automatico.
+    
+    Bcrypt è uno degli algoritmi più sicuri per password hashing perché:
+    - Automaticamente genera salt unico per ogni hash
+    - Computazionalmente costoso (resistente a brute-force)
+    - Regolabile con work factor (default: 12 rounds)
 
     Input:
-    - x (str): testo in chiaro.
+    - x (str): password in chiaro.
 
     Output:
-    - str: esadecimale hash a 64 caratteri.
+    - str: hash bcrypt (60 caratteri) formato: $2b$12$[salt][hash]
+    
+    Esempio output: $2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW
     """
-    from hashlib import sha256
-    return sha256(x.encode()).hexdigest()
+    import bcrypt
+    # bcrypt richiede bytes, restituisce bytes, convertiamo in string per DB
+    hashed = bcrypt.hashpw(x.encode('utf-8'), bcrypt.gensalt(rounds=12))
+    return hashed.decode('utf-8')
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Descrizione:
+    Verifica se una password in chiaro corrisponde all'hash bcrypt.
+    
+    Input:
+    - plain_password (str): password da verificare.
+    - hashed_password (str): hash bcrypt memorizzato nel DB.
+    
+    Output:
+    - bool: True se la password è corretta, False altrimenti.
+    
+    Nota: bcrypt confronta automaticamente l'hash tenendo conto del salt.
+    """
+    import bcrypt
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'),
+            hashed_password.encode('utf-8')
+        )
+    except (ValueError, AttributeError):
+        # Hash malformato o None
+        return False
+
+
+def verify_password_legacy(plain_password: str, stored_hash: str) -> bool:
+    """Descrizione:
+    Verifica password con backward compatibility per migrazione SHA256 → bcrypt.
+    
+    Durante il periodo di transizione, supporta:
+    - bcrypt (nuovo, raccomandato): hash che iniziano con $2b$ o $2a$
+    - SHA256 (legacy, deprecato): hash esadecimali 64 caratteri
+    
+    Input:
+    - plain_password (str): password in chiaro da verificare.
+    - stored_hash (str): hash memorizzato nel DB (bcrypt o SHA256).
+    
+    Output:
+    - bool: True se la password è corretta, False altrimenti.
+    
+    NOTA: Questa funzione è temporanea per la migrazione.
+    Rimuovere dopo che tutti gli utenti hanno migrato a bcrypt.
+    """
+    if not stored_hash:
+        return False
+    
+    # Check if bcrypt format (starts with $2b$ or $2a$)
+    if stored_hash.startswith('$2b$') or stored_hash.startswith('$2a$'):
+        return verify_password(plain_password, stored_hash)
+    
+    # Fallback to SHA256 (legacy) - DEPRECATO
+    # Solo per utenti esistenti che non hanno ancora fatto reset password
+    if len(stored_hash) == 64 and all(c in '0123456789abcdef' for c in stored_hash):
+        from hashlib import sha256
+        sha256_hash = sha256(plain_password.encode()).hexdigest()
+        return stored_hash == sha256_hash
+    
+    # Hash format sconosciuto
+    return False
 
 
 def generateToken() -> str:
@@ -390,7 +459,7 @@ def decide_login(data, get_user_by_token_fn, get_manager_fn, get_dipendente_fn, 
     Input:
     - data (dict)
     - get_user_by_token_fn, get_manager_fn, get_dipendente_fn (callable): accesso dati.
-    - crypt_fn (callable): funzione hashing password.
+    - crypt_fn (callable): funzione hashing password (deprecata, ora usa verify_password_legacy).
 
     Output:
     - tuple status: ('ok_token', token, type) | ('invalid_token',) | ('missing_credentials',)
@@ -408,14 +477,14 @@ def decide_login(data, get_user_by_token_fn, get_manager_fn, get_dipendente_fn, 
     if not email or not password:
         return ('missing_credentials',)
 
-    # manager first
+    # manager first - usa verify_password_legacy per backward compatibility
     manager = get_manager_fn(email)
-    if manager and manager.get('password') == crypt_fn(password):
+    if manager and verify_password_legacy(password, manager.get('password', '')):
         return ('ok', manager.get('token'), 'Manager')
 
-    # then dipendente
+    # then dipendente - usa verify_password_legacy per backward compatibility
     user = get_dipendente_fn(email)
-    if user and user.get('password') == crypt_fn(password):
+    if user and verify_password_legacy(password, user.get('password', '')):
         return ('ok', user.get('token'), 'Dipendente')
 
     return ('invalid_credentials',)
