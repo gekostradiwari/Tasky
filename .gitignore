@@ -22,6 +22,7 @@ secrets/
 
 # Logs
 *.log
+logs/
 
 # Node/tester cache (if any)
 node_modules/
@@ -46,5 +47,3 @@ google-services.json
 # Generated outputs/archives
 scripts/output/
 tasky-notify.zip
-
-docker-compose.yml
