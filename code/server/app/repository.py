@@ -7,6 +7,9 @@ from .db import get_db_connection
 from flask import jsonify
 from datetime import date, datetime
 import threading
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _fmt_date(val):
@@ -39,6 +42,10 @@ def upsert_push_subscription(email: str, role: str, platform: str, fcm_token: st
             )
             cursor.execute(sql, (email, role, platform, fcm_token))
         conn.commit()
+        logger.info(f"Upserted push subscription for {email} ({role})")
+    except Exception as e:
+        logger.error(f"Failed to upsert push subscription for {email}: {e}")
+        raise
     finally:
         conn.close()
 
@@ -49,6 +56,10 @@ def delete_push_subscription(fcm_token: str):
         with conn.cursor() as cursor:
             cursor.execute("DELETE FROM push_subscriptions WHERE fcm_token=%s", (fcm_token,))
         conn.commit()
+        logger.info(f"Deleted push subscription with token {fcm_token[:20]}...")
+    except Exception as e:
+        logger.error(f"Failed to delete push subscription: {e}")
+        raise
     finally:
         conn.close()
 
@@ -87,8 +98,11 @@ def handle_numero_dipendenti(data, get_db_connection_fn):
             sql = sql_select_helper('Dipartimento', columns=['numero_dipendenti'], where_cols=['id_dipartimento'])
             cursor.execute(sql, (dept_id,))
             row = cursor.fetchone() or {"numero_dipendenti": 0}
-            return {"n_dipendenti": row.get('numero_dipendenti', 0)}
+            result = {"n_dipendenti": row.get('numero_dipendenti', 0)}
+            logger.debug(f"Retrieved employee count for department {dept_id}: {result['n_dipendenti']}")
+            return result
     except Exception as e:
+        logger.error(f"Failed to get employee count for department {dept_id}: {e}")
         raise ServerException(details={"orig": str(e)})
     finally:
         conn.close()
@@ -167,12 +181,17 @@ def insertTask(id_task, nome, stato, descrizione, data_inizio, data_fine, id_pro
                 sql = sql_insert_helper('TASK', cols)
                 cursor.execute(sql, (nome, stato, descrizione, data_inizio, data_fine, id_progetto, dipendente_email, manager_email))
                 new_id = cursor.lastrowid
+                logger.info(f"Inserted new task (id={new_id}, nome='{nome}', progetto={id_progetto}, stato={stato})")
             else:
                 cols = ["id","nome","stato","descrizione","data_inizio","data_fine","Progetto_id_progetto","Dipendente_email","Manager_email"]
                 sql = sql_insert_helper('TASK', cols)
                 cursor.execute(sql, (id_task, nome, stato, descrizione, data_inizio, data_fine, id_progetto, dipendente_email, manager_email))
                 new_id = id_task
+                logger.info(f"Inserted task with explicit id={new_id}, nome='{nome}', progetto={id_progetto}")
         conn.commit()
+    except Exception as e:
+        logger.error(f"Failed to insert task (nome='{nome}', progetto={id_progetto}): {e}")
+        raise
     finally:
         conn.close()
     return new_id
@@ -751,10 +770,14 @@ def handle_login(data):
     tag = decision[0]
 
     if tag == 'invalid_token':
+        logger.warning(f"Login failed: invalid token")
         raise AuthException("AUTH_TOKEN_INVALID", "Token non valido", 403)
     if tag == 'missing_credentials':
+        logger.warning(f"Login failed: missing credentials")
         raise ValidationException("MISSING_CREDENTIALS", "Email o password mancanti", 400)
     if tag not in ('ok', 'ok_token'):
+        email = data.get('email', 'unknown')
+        logger.warning(f"Login failed: invalid credentials for email {email}")
         raise AuthException("INVALID_CREDENTIALS", "Email o password non valide", 401)
 
     # Unified handling for successful login (via token or credentials)
@@ -768,6 +791,7 @@ def handle_login(data):
         user_wrap = get_user_by_token(token)
         if user_wrap and user_wrap.get('user'):
             user = user_wrap['user']
+            email = user.get('email', 'unknown')
             dept_id = user.get('Dipartimento_id_dipartimento')
             sesso = user.get('sesso')
             nome = (user.get('nome') or '').strip()
@@ -788,7 +812,9 @@ def handle_login(data):
                         nome_dipartimento = row.get('nome')
                 finally:
                     conn.close()
-    except Exception:
+            logger.info(f"Successful login: {email} ({tipo})")
+    except Exception as e:
+        logger.error(f"Error fetching user details after login: {e}")
         pass
 
     return jsonify({
@@ -919,21 +945,40 @@ def updateProject(id_progetto: int, updates: dict):
     """Aggiorna un progetto. 'updates' contiene colonne valide da modificare.
 
     Ritorna la riga aggiornata o None se non esiste.
+    
+    Implements explicit row-level locking (SELECT FOR UPDATE) to prevent
+    lost updates when multiple managers modify the same project concurrently
+    (RAD 5.2 - Concurrency Management).
     """
     if not updates:
+        logger.debug(f"updateProject called with no updates for project {id_progetto}")
         return None
     allowed = {"descrizione","budgetIstanziato","nome","dataInizio","dataFine","Dipartimento_id_dipartimento"}
     cols = [c for c in updates.keys() if c in allowed]
     if not cols:
+        logger.debug(f"updateProject: no valid columns to update for project {id_progetto}")
         return None
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
+            # Explicit row-level lock to prevent concurrent budget/data modifications
+            cursor.execute(
+                "SELECT id_progetto FROM Progetto WHERE id_progetto=%s FOR UPDATE",
+                (id_progetto,)
+            )
+            if not cursor.fetchone():
+                logger.warning(f"Project {id_progetto} not found for update")
+                return None  # Project not found
+            
+            # Now safe to update - exclusive lock held
             sql = sql_update_helper('Progetto', cols, ['id_progetto'])
             cursor.execute(sql, tuple(updates[c] for c in cols) + (id_progetto,))
-            if cursor.rowcount == 0:
-                return None
+            logger.info(f"Updated project {id_progetto} (fields: {', '.join(cols)})")
         conn.commit()
+    except Exception as e:
+        logger.error(f"Failed to update project {id_progetto}: {e}")
+        conn.rollback()
+        raise
     finally:
         conn.close()
     # fetch updated row
@@ -964,21 +1009,39 @@ def deleteProject(id_progetto: int) -> bool:
 def updateTask(id_task: int, id_progetto: int, updates: dict):
     """Aggiorna una task, assicurandosi che appartenga al progetto indicato.
     Ritorna la riga aggiornata o None se non esiste.
+    
+    Implements explicit row-level locking (SELECT FOR UPDATE) to prevent
+    lost updates in concurrent scenarios (RAD 5.2 - Concurrency Management).
     """
     if not updates:
+        logger.debug(f"updateTask called with no updates for task {id_task}")
         return None
     allowed = {"nome","stato","descrizione","data_inizio","data_fine","Dipendente_email","Manager_email"}
     cols = [c for c in updates.keys() if c in allowed]
     if not cols:
+        logger.debug(f"updateTask: no valid columns to update for task {id_task}")
         return None
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
+            # Explicit row-level lock to prevent concurrent updates (ACID + Locking)
+            cursor.execute(
+                "SELECT id FROM TASK WHERE id=%s AND Progetto_id_progetto=%s FOR UPDATE",
+                (id_task, id_progetto)
+            )
+            if not cursor.fetchone():
+                logger.warning(f"Task {id_task} not found in project {id_progetto} for update")
+                return None  # Task not found or doesn't belong to project
+            
+            # Now safe to update - no other thread can modify this row
             sql = sql_update_helper('TASK', cols, ['id','Progetto_id_progetto'])
             cursor.execute(sql, tuple(updates[c] for c in cols) + (id_task, id_progetto))
-            if cursor.rowcount == 0:
-                return None
+            logger.info(f"Updated task {id_task} in project {id_progetto} (fields: {', '.join(cols)})")
         conn.commit()
+    except Exception as e:
+        logger.error(f"Failed to update task {id_task} in project {id_progetto}: {e}")
+        conn.rollback()
+        raise
     finally:
         conn.close()
     # fetch updated row

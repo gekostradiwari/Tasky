@@ -1,5 +1,7 @@
 from marshmallow import ValidationError
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
+import logging
+import time
 
 from .utils import crypt, manager_of_department, manager_required
 from .exceptions import ValidationException
@@ -23,6 +25,21 @@ from .schemas import ProjectUpdateSchema, ProjectDeleteSchema, TaskUpdateSchema,
 from .schemas import PushRegisterSchema, PushUnregisterSchema, PushTestSchema
 
 bp = Blueprint('api', __name__, url_prefix='/api')
+logger = logging.getLogger(__name__)
+
+@bp.before_request
+def log_request():
+    """Log incoming requests with method, path, and client IP."""
+    g.start_time = time.time()
+    logger.info(f"Incoming request: {request.method} {request.path} from {request.remote_addr}")
+
+@bp.after_request
+def log_response(response):
+    """Log outgoing responses with status code and duration."""
+    if hasattr(g, 'start_time'):
+        duration = time.time() - g.start_time
+        logger.info(f"Response: {response.status_code} for {request.method} {request.path} ({duration:.3f}s)")
+    return response
 
 @bp.route('/dipendenti/by-project', methods=['POST'])
 @manager_of_department('id_dipartimento')
@@ -494,6 +511,94 @@ def debug_push_status():
             "initialized": bool(ready)
         }
     }), 200
+
+@bp.route('/debug/scheduler/check-overdue', methods=['POST'])
+@manager_required
+def debug_scheduler_check_overdue(manager=None, **kwargs):
+    """Debug endpoint to manually trigger scheduler check for overdue tasks.
+    
+    In production, this runs automatically at midnight via APScheduler.
+    This endpoint allows testing the scheduler logic without waiting.
+    """
+    try:
+        from .scheduler import check_overdue_tasks
+        check_overdue_tasks()
+        return jsonify({
+            "message": "Scheduler check completed",
+            "note": "In production, this runs automatically daily at 00:00"
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "error": {
+                "code": "SCHEDULER_ERROR",
+                "message": str(e)
+            }
+        }), 500
+
+@bp.route('/debug/logs', methods=['GET'])
+@manager_required
+def debug_logs(manager=None, **kwargs):
+    """Debug endpoint to view recent log entries.
+    
+    Query parameters:
+    - file: Log file to read (app, error, scheduler) - default: app
+    - lines: Number of recent lines to retrieve - default: 100
+    - level: Filter by log level (DEBUG, INFO, WARNING, ERROR, CRITICAL) - optional
+    
+    Returns: JSON array of log entries with parsed fields
+    """
+    from .logging_config import get_recent_logs
+    import os
+    
+    # Parse query parameters
+    log_file = request.args.get('file', 'app')
+    lines = int(request.args.get('lines', 100))
+    level_filter = request.args.get('level')
+    
+    # Map file parameter to actual log file path
+    log_file_map = {
+        'app': 'logs/app.log',
+        'error': 'logs/error.log',
+        'scheduler': 'logs/scheduler.log'
+    }
+    
+    if log_file not in log_file_map:
+        return jsonify({
+            "error": {
+                "code": "INVALID_LOG_FILE",
+                "message": f"Invalid log file. Choose from: {', '.join(log_file_map.keys())}"
+            }
+        }), 400
+    
+    file_path = log_file_map[log_file]
+    
+    # Check if file exists
+    if not os.path.exists(file_path):
+        return jsonify({
+            "data": {
+                "entries": [],
+                "message": f"Log file {log_file}.log does not exist yet"
+            }
+        }), 200
+    
+    try:
+        entries = get_recent_logs(file_path, lines, level_filter)
+        return jsonify({
+            "data": {
+                "file": log_file,
+                "total_entries": len(entries),
+                "level_filter": level_filter,
+                "entries": entries
+            }
+        }), 200
+    except Exception as e:
+        logger.error(f"Failed to retrieve logs from {file_path}: {e}")
+        return jsonify({
+            "error": {
+                "code": "LOG_RETRIEVAL_ERROR",
+                "message": str(e)
+            }
+        }), 500
 
 # -------------------- Update / Delete Endpoints -------------------- #
 
