@@ -66,7 +66,7 @@ Errori: come sopra + MISSING_PARAMS se campo aggiuntivo mancante.
 Varianti input: `{ "token":"..." }` oppure `{ "email":"...", "password":"..." }`.
 Risposta 200:
 ```json
-{ "message":"Login effettuato", "data": { "token":"<token>", "type":"Manager|Dipendente", "id_dipartimento": 1, "sesso": "M" } }
+{ "message":"Login effettuato", "data": { "token":"<token>", "type":"Manager|Dipendente" } }
 ```
 Errori: MISSING_CREDENTIALS, INVALID_CREDENTIALS, AUTH_TOKEN_INVALID.
 
@@ -277,6 +277,36 @@ Note: endpoint di diagnostica sviluppo; non esporre in produzione.
 
 L’invio è asincrono (thread best-effort) e non incide sui tempi di risposta.
 
+### 10.6 POST /api/projects/by-manager
+Restituisce i progetti gestiti da un manager (ovvero progetti in cui il manager ha assegnato almeno una task).
+
+Input:
+```json
+{
+  "email_manager": "mgr_test@example.com"
+}
+```
+
+Output 200:
+```json
+{
+  "data": {
+    "items": [
+      {
+        "id_progetto": 1,
+        "nome": "Progetto Alpha",
+        "descrizione": "...",
+        "budget": "10000.00",
+        "dataInizio": "2024-01-01",
+        "dataFine": "2024-12-31",
+        "Dipartimento_id_dipartimento": 1
+      }
+    ],
+    "count": 1
+  }
+}
+```
+
 ## 11. Riepilogo CRUD Modifica / Eliminazione
 | Endpoint | Metodo | Ruolo | Requisiti minimi | Errore specifico |
 |----------|--------|-------|------------------|------------------|
@@ -297,11 +327,45 @@ L’invio è asincrono (thread best-effort) e non incide sui tempi di risposta.
 | Budget progetto | `{ "data": { "budget": "NNNNN.nn" } }` |
 | Errore validazione | `{ "error": { "code":"MISSING_PARAMS", "message":"Validazione fallita", "fields": { ... } } }` |
 
-## 12. Roadmap
+## 12. Controllo Software e Concorrenza
+
+### Architettura di Controllo (RAD 5.1)
+**Request/Response (Invocation/Return)**: 
+- Ogni richiesta HTTP/REST viene gestita in modo sincrono attraverso i layer:
+  1. Presentation Layer (routes): riceve richiesta
+  2. Application Layer (manager + schemas): autentica, autorizza (RBAC), valida
+  3. Data Access Layer (repository): interagisce con MySQL
+  4. Risposta JSON al client
+
+**Time-Triggered (Scheduler)**:
+- APScheduler esegue job automatici in background (non blocca HTTP)
+- **Controllo scadenze task**: daily job alle 00:00 che imposta `stato='Sospeso'` per task con `data_fine < oggi`
+- Debug endpoint: `/api/debug/scheduler/check-overdue` (POST, Manager token required)
+
+### Gestione Concorrenza (RAD 5.2)
+**Threading**: Server WSGI gestisce richieste in parallelo (centinaia di thread concorrenti)
+
+**Sincronizzazione ACID + Locking**:
+- Transazioni esplicite (`BEGIN/COMMIT/ROLLBACK`) per operazioni multi-step
+- **Row-level locking** con `SELECT ... FOR UPDATE` su:
+  - `updateTask()`: lock esclusivo prima di modificare task (previene lost updates)
+  - `updateProject()`: lock esclusivo prima di modificare budget/dati progetto
+- MySQL gestisce proprietà ACID e lock automatici
+
+**Esempio concurrent scenario**:
+```bash
+# Due manager aggiornano stesso task contemporaneamente
+# Terminal 1: POST /api/update/Task {"id": 5, ...}  → acquisisce lock
+# Terminal 2: POST /api/update/Task {"id": 5, ...}  → attende rilascio lock
+# Risultato: aggiornamenti sequenziali garantiti, nessun lost update
+```
+
+## 13. Roadmap
 * Supporto Authorization Bearer token (retrocompatibilità temporanea body `token`)
 * Uniformare `data_nascita` a `YYYY-MM-DD`
 * Versioning `/api/v2` per breaking changes
 * Test unitari e CI pipeline
+* Scheduler configurabile (intervallo personalizzabile)
 
 ---
-Ultimo aggiornamento: 2025-10-12
+Ultimo aggiornamento: 2025-11-25
