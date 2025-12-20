@@ -217,6 +217,39 @@
         statusChip('chipProjInProgress', resp.status);
   // No visual table for this card; response is shown raw above.
         break; }
+      case 'pushRegister': {
+        const outEl = qs('#outPushReg');
+        // Validate required fields
+        if (!payload) payload = {};
+        if (!payload.token) payload.token = tokenMgr.value || tokenDip.value;
+        if (!payload.fcm_token) { outEl.textContent = 'Inserisci fcm_token'; break; }
+        const resp = await call('/push/register', payload, outEl, 'chipPushReg');
+        break; }
+      case 'pushUnregister': {
+        const outEl = qs('#outPushUnreg');
+        if (!payload) payload = {};
+        if (!payload.token) payload.token = tokenMgr.value || tokenDip.value;
+        if (!payload.fcm_token) { outEl.textContent = 'Inserisci fcm_token da rimuovere'; break; }
+        const resp = await call('/push/unregister', payload, outEl, 'chipPushUnreg');
+        break; }
+      case 'debugPushTest': {
+        const outEl = qs('#outPushTest');
+        if (!payload) payload = {};
+        if (!payload.token) payload.token = tokenMgr.value || tokenDip.value;
+        // Require at least one recipient
+        const hasEmail = !!payload.email && String(payload.email).trim() !== '';
+        const hasFcm = !!payload.fcm_token && String(payload.fcm_token).trim() !== '';
+        if (!hasEmail && !hasFcm) { outEl.textContent = 'Inserisci email o fcm_token del destinatario'; break; }
+        // Ensure only one of email/fcm_token is sent, email has priority if both
+        if (hasEmail && hasFcm) { delete payload.fcm_token; }
+        const resp = await call('/debug/push/test', payload, outEl, 'chipPushTest');
+        break; }
+      case 'debugPushStatus': {
+        const outEl = qs('#outPushStatus');
+        if (!payload) payload = {};
+        if (!payload.token) payload.token = tokenMgr.value || tokenDip.value;
+        const resp = await call('/debug/push/status', payload, outEl, 'chipPushStatus');
+        break; }
       case 'dipendentiByDept': {
         const outEl = qs('#outDipDept');
         await call('/dipendenti/by-department', payload, outEl, 'chipDipDept');
@@ -264,6 +297,21 @@
           }
         } catch(e) { /* ignore */ }
         break; }
+      case 'projectsByManager': {
+        const outEl = qs('#outProjByMgr');
+        const resp = await call('/projects/by-manager', payload, outEl, 'chipProjMgr');
+        if (!resp) return;
+        // Render items if present
+        try {
+          if (resp.body && resp.body.data && Array.isArray(resp.body.data.items)) {
+            const items = resp.body.data.items;
+            if (items.length > 0) {
+              const keys = Object.keys(items[0]);
+              outEl.innerHTML = '<table class="table table-sm"><thead><tr>' + keys.map(k=>'<th>'+k+'</th>').join('') + '</tr></thead><tbody>' + items.map(it=>'<tr>'+keys.map(k=>'<td>'+(it[k]===null?'':String(it[k]))+'</td>').join('')+'</tr>').join('') + '</tbody></table>';
+            }
+          }
+        } catch(e) { /* ignore */ }
+        break; }
       case 'projectBudget': {
         const outEl = qs('#outProjBudget');
         const resp = await call('/projects/budget', payload, outEl, 'chipBudget');
@@ -289,6 +337,18 @@
       case 'deleteTask': {
         const outEl = qs('#outDelTask');
         await call('/delete/Task', payload, outEl, 'chipDelTask');
+        break; }
+      case 'suspendedTasks': {
+        const outEl = qs('#outSuspended');
+        await call('/tasks/suspended', payload, outEl, 'chipSuspended');
+        break; }
+      case 'completedTasks': {
+        const outEl = qs('#outCompleted');
+        await call('/tasks/completed', payload, outEl, 'chipCompleted');
+        break; }
+      case 'inProgressTasks': {
+        const outEl = qs('#outInProgress');
+        await call('/tasks/in-progress', payload, outEl, 'chipInProgress');
         break; }
       case 'dipendentiDataByDept': {
         const outEl = qs('#outDipDeptData');
