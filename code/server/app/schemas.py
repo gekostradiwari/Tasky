@@ -84,6 +84,25 @@ class EmployeeProjectsSchema(Schema):
     email_dipendente = fields.Email(required=True)
 
 
+class ManagerProjectsSchema(Schema):
+    email_manager = fields.Email(required=True)
+
+
+class SuspendedTasksSchema(Schema):
+    token = fields.Str(required=True)
+    email_dipendente = fields.Email(required=True)
+
+
+class CompletedTasksSchema(Schema):
+    token = fields.Str(required=True)
+    email_dipendente = fields.Email(required=True)
+
+
+class InProgressTasksSchema(Schema):
+    token = fields.Str(required=True)
+    email_dipendente = fields.Email(required=True)
+
+
 class ProjectBudgetSchema(Schema):
     id_progetto = fields.Integer(required=True, strict=True)
 

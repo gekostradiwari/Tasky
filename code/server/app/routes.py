@@ -3,21 +3,25 @@ from flask import Blueprint, request, jsonify, g
 import logging
 import time
 
-from .utils import crypt, manager_of_department, manager_required
+from .utils import crypt, manager_of_department, manager_required, member_of_department
 from .exceptions import ValidationException
 from . import manager as manager_module
 
 from .schemas import (
     TaskCreateSchema, ProjectCreateSchema,
     RegisterDipendenteSchema, RegisterManagerSchema,
-    LoginSchema, ProjectVisibilitySchema, TaskVisibilitySchema
+    LoginSchema, ProjectVisibilitySchema, TaskVisibilitySchema,
+    SuspendedTasksSchema, CompletedTasksSchema, InProgressTasksSchema
 )
 from .schemas import DepartmentCreateSchema
 from .repository import (
     insertDipendente, handle_register, handle_login,
     get_projects_by_department, get_tasks_from_project,
     handle_project_by_department, handle_task_by_project,
-    get_budget_for_project,get_projects_for_employee, handle_update_project, 
+    get_budget_for_project,get_projects_for_employee, get_suspended_tasks_for_employee,
+    get_completed_tasks_for_employee, get_in_progress_tasks_for_employee,
+    get_projects_for_manager,
+    handle_update_project, 
     handle_delete_project, handle_update_task, handle_delete_task
 )
 
@@ -80,10 +84,11 @@ def getDipendentiDataFromDipartimento(manager=None, **kwargs):
     # delegate to manager layer
     return manager_module.get_dipendenti_data(data)
 @bp.route('/dipendenti/by-department', methods=['POST'])
-@manager_of_department('id_dipartimento')
+@member_of_department('id_dipartimento')
 def getDipendentiFromDipartimento(manager=None, **kwargs):
     """Descrizione:
     Restituisce tutti i dipendenti appartenenti al dipartimento indicato.
+    Accessibile a Manager e Dipendenti dello stesso dipartimento.
 
     Input (JSON): token (str), id_dipartimento (int)
 
@@ -207,6 +212,164 @@ def projects_by_dipendente():
     except ValidationError as ve:
         raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
     items = get_projects_for_employee(data.get('email_dipendente'), get_db_connection_fn=_get_db_connection)
+    return jsonify({"data": {"items": items, "count": len(items)}}), 200
+
+
+@bp.route('/projects/by-manager', methods=['POST'])
+def projects_by_manager():
+    """Restituisce i progetti gestiti da un manager (input: email_manager).
+
+    Input JSON: { email_manager: str }
+    Output: 200 JSON { data: { items: [...], count: int } }
+    """
+    raw = request.get_json() or {}
+    from .schemas import ManagerProjectsSchema
+    try:
+        data = ManagerProjectsSchema().load(raw)
+    except ValidationError as ve:
+        raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
+    items = get_projects_for_manager(data.get('email_manager'), get_db_connection_fn=_get_db_connection)
+    return jsonify({"data": {"items": items, "count": len(items)}}), 200
+
+
+@bp.route('/tasks/suspended', methods=['POST'])
+def tasks_suspended():
+    """Restituisce tutte le task sospese per un determinato dipendente.
+
+    Input JSON: { token: str, email_dipendente: str }
+    Output: 200 JSON { data: { items: [...], count: int } }
+    """
+    raw = request.get_json() or {}
+    try:
+        data = SuspendedTasksSchema().load(raw)
+    except ValidationError as ve:
+        raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
+
+    token = data['token']
+    target_email = data['email_dipendente']
+
+    user_wrap = _get_user_by_token(token)
+    if not user_wrap:
+        from .exceptions import AuthException
+        raise AuthException("AUTH_TOKEN_INVALID", "Token non valido", 403)
+
+    user = user_wrap['user']
+    user_type = user_wrap['type']
+    
+    # Authorization check
+    if user_type == 'Dipendente':
+        if user['email'] != target_email:
+             from .exceptions import AuthException
+             raise AuthException("AUTH_FORBIDDEN", "Un dipendente può vedere solo le proprie task sospese", 403)
+    elif user_type == 'Manager':
+        from .repository import getDipendente
+        target_user = getDipendente(target_email)
+        # Se non è un dipendente, proviamo a vedere se è un manager (un manager può avere task?)
+        # Assumiamo per ora che cerchiamo solo Dipendenti.
+        if not target_user:
+             # Se l'utente target non esiste, ritorniamo lista vuota (o 404, ma lista vuota è ok)
+             return jsonify({"data": {"items": [], "count": 0}}), 200
+        
+        if str(target_user.get('Dipartimento_id_dipartimento')) != str(user.get('Dipartimento_id_dipartimento')):
+             from .exceptions import AuthException
+             raise AuthException("AUTH_FORBIDDEN_DEPARTMENT", "Manager non autorizzato per questo dipendente", 403)
+    else:
+         from .exceptions import AuthException
+         raise AuthException("AUTH_FORBIDDEN_ROLE", "Ruolo non autorizzato", 403)
+
+    items = get_suspended_tasks_for_employee(target_email, get_db_connection_fn=_get_db_connection)
+    return jsonify({"data": {"items": items, "count": len(items)}}), 200
+
+
+@bp.route('/tasks/completed', methods=['POST'])
+def tasks_completed():
+    """Restituisce tutte le task completate per un determinato dipendente.
+
+    Input JSON: { token: str, email_dipendente: str }
+    Output: 200 JSON { data: { items: [...], count: int } }
+    """
+    raw = request.get_json() or {}
+    try:
+        data = CompletedTasksSchema().load(raw)
+    except ValidationError as ve:
+        raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
+
+    token = data['token']
+    target_email = data['email_dipendente']
+
+    user_wrap = _get_user_by_token(token)
+    if not user_wrap:
+        from .exceptions import AuthException
+        raise AuthException("AUTH_TOKEN_INVALID", "Token non valido", 403)
+
+    user = user_wrap['user']
+    user_type = user_wrap['type']
+    
+    # Authorization check
+    if user_type == 'Dipendente':
+        if user['email'] != target_email:
+             from .exceptions import AuthException
+             raise AuthException("AUTH_FORBIDDEN", "Un dipendente può vedere solo le proprie task completate", 403)
+    elif user_type == 'Manager':
+        from .repository import getDipendente
+        target_user = getDipendente(target_email)
+        if not target_user:
+             return jsonify({"data": {"items": [], "count": 0}}), 200
+        
+        if str(target_user.get('Dipartimento_id_dipartimento')) != str(user.get('Dipartimento_id_dipartimento')):
+             from .exceptions import AuthException
+             raise AuthException("AUTH_FORBIDDEN_DEPARTMENT", "Manager non autorizzato per questo dipendente", 403)
+    else:
+         from .exceptions import AuthException
+         raise AuthException("AUTH_FORBIDDEN_ROLE", "Ruolo non autorizzato", 403)
+
+    items = get_completed_tasks_for_employee(target_email, get_db_connection_fn=_get_db_connection)
+    return jsonify({"data": {"items": items, "count": len(items)}}), 200
+
+
+@bp.route('/tasks/in-progress', methods=['POST'])
+def tasks_in_progress():
+    """Restituisce tutte le task in corso (Open o InProgress) per un determinato dipendente.
+
+    Input JSON: { token: str, email_dipendente: str }
+    Output: 200 JSON { data: { items: [...], count: int } }
+    """
+    raw = request.get_json() or {}
+    try:
+        data = InProgressTasksSchema().load(raw)
+    except ValidationError as ve:
+        raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
+
+    token = data['token']
+    target_email = data['email_dipendente']
+
+    user_wrap = _get_user_by_token(token)
+    if not user_wrap:
+        from .exceptions import AuthException
+        raise AuthException("AUTH_TOKEN_INVALID", "Token non valido", 403)
+
+    user = user_wrap['user']
+    user_type = user_wrap['type']
+    
+    # Authorization check
+    if user_type == 'Dipendente':
+        if user['email'] != target_email:
+             from .exceptions import AuthException
+             raise AuthException("AUTH_FORBIDDEN", "Un dipendente può vedere solo le proprie task in corso", 403)
+    elif user_type == 'Manager':
+        from .repository import getDipendente
+        target_user = getDipendente(target_email)
+        if not target_user:
+             return jsonify({"data": {"items": [], "count": 0}}), 200
+        
+        if str(target_user.get('Dipartimento_id_dipartimento')) != str(user.get('Dipartimento_id_dipartimento')):
+             from .exceptions import AuthException
+             raise AuthException("AUTH_FORBIDDEN_DEPARTMENT", "Manager non autorizzato per questo dipendente", 403)
+    else:
+         from .exceptions import AuthException
+         raise AuthException("AUTH_FORBIDDEN_ROLE", "Ruolo non autorizzato", 403)
+
+    items = get_in_progress_tasks_for_employee(target_email, get_db_connection_fn=_get_db_connection)
     return jsonify({"data": {"items": items, "count": len(items)}}), 200
 
 
