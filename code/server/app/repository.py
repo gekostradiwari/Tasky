@@ -318,6 +318,89 @@ def get_projects_for_employee(email: str, get_db_connection_fn=get_db_connection
         conn.close()
 
 
+def get_projects_for_manager(email: str, get_db_connection_fn=get_db_connection):
+    """Ritorna i progetti associati a un manager (tramite TASK assignment)."""
+    conn = get_db_connection_fn()
+    try:
+        with conn.cursor() as cursor:
+            sql = sql_select_helper(
+                table='Progetto p',
+                columns=['DISTINCT p.*'],
+                joins=[{'type': 'JOIN', 'table': 'TASK', 'alias': 't', 'on': 't.Progetto_id_progetto = p.id_progetto'}],
+                where_exprs=['t.Manager_email=%s'],
+                order_by='p.id_progetto'
+            )
+            cursor.execute(sql, (email,))
+            items = cursor.fetchall() or []
+            _format_items_dates(items, ['dataInizio','dataFine'])
+            return items
+    finally:
+        conn.close()
+
+
+def get_suspended_tasks_for_employee(email: str, get_db_connection_fn=get_db_connection):
+    """Ritorna tutte le task con stato 'Sospeso' per un determinato dipendente."""
+    conn = get_db_connection_fn()
+    try:
+        with conn.cursor() as cursor:
+            sql = sql_select_helper(
+                table='TASK',
+                where_cols=['Dipendente_email', 'stato'],
+                order_by='data_fine ASC'
+            )
+            cursor.execute(sql, (email, 'Sospeso'))
+            items = cursor.fetchall() or []
+            _format_items_dates(items, ['data_inizio', 'data_fine'])
+            return items
+    finally:
+        conn.close()
+
+
+def get_completed_tasks_for_employee(email: str, get_db_connection_fn=get_db_connection):
+    """Ritorna tutte le task con stato 'Completato' per un determinato dipendente."""
+    conn = get_db_connection_fn()
+    try:
+        with conn.cursor() as cursor:
+            sql = sql_select_helper(
+                table='TASK',
+                where_cols=['Dipendente_email', 'stato'],
+                order_by='data_fine DESC'
+            )
+            cursor.execute(sql, (email, 'Completato'))
+            items = cursor.fetchall() or []
+            _format_items_dates(items, ['data_inizio', 'data_fine'])
+            return items
+    finally:
+        conn.close()
+
+
+def get_in_progress_tasks_for_employee(email: str, get_db_connection_fn=get_db_connection):
+    """Ritorna tutte le task con stato 'InProgress' (o 'Open') per un determinato dipendente."""
+    conn = get_db_connection_fn()
+    try:
+        with conn.cursor() as cursor:
+            # Consideriamo 'InProgress' e 'Open' come task in corso?
+            # La richiesta dice "task in corso". Solitamente si intende tutto ciò che non è finito o sospeso.
+            # Se lo stato è esattamente 'InProgress', usiamo quello.
+            # Se vogliamo includere anche 'Open', dobbiamo usare una IN clause.
+            # Per ora assumiamo che lo stato sia 'InProgress' come da convenzione usata finora nei test.
+            # Se serve anche 'Open', possiamo modificare la query.
+            # Verifichiamo cosa usa il sistema. Nei test vedo "stato":"Open" e "stato":"InProgress".
+            # Probabilmente "in corso" intende quelle attive.
+            # Ma se la richiesta è specifica per "in corso", forse intende solo 'InProgress'.
+            # Tuttavia, per un dipendente, le task da fare sono sia Open che InProgress.
+            # Facciamo una query che prende entrambe per sicurezza, oppure solo InProgress se richiesto strettamente.
+            # Dato che non ho specifiche strette, prendo 'InProgress' e 'Open'.
+            
+            sql = "SELECT * FROM TASK WHERE Dipendente_email = %s AND stato IN ('Open', 'InProgress') ORDER BY data_fine ASC"
+            cursor.execute(sql, (email,))
+            items = cursor.fetchall() or []
+            _format_items_dates(items, ['data_inizio', 'data_fine'])
+            return items
+    finally:
+        conn.close()
+
+
 def get_budget_for_project(id_progetto: int, get_db_connection_fn=get_db_connection):
     """Ritorna il budget istanziato per un progetto dato il suo id."""
     conn = get_db_connection_fn()

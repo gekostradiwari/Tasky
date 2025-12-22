@@ -567,6 +567,24 @@
           </div>
         </div>
 
+        <!-- Progetti per Manager -->
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="card h-100 shadow-sm" data-endpoint="/projects/by-manager">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+              <span class="fw-semibold small text-uppercase">Progetti per Manager</span>
+              <span class="status-chip" id="chipProjMgr"></span>
+            </div>
+            <div class="card-body pb-2">
+              <form data-form="projByMgr" class="small">
+                <div class="mb-2"><label class="form-label">Email Manager<input class="form-control form-control-sm" name="email_manager" value="mgr_test@example.com" required></label></div>
+                <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="projByMgrBody" rows="3" class="form-control form-control-sm"></textarea></details>
+                <button data-action="projectsByManager" class="btn btn-sm btn-outline-primary">Fetch</button>
+              </form>
+            </div>
+            <div class="card-footer bg-body-tertiary"><pre class="out" id="outProjByMgr"></pre></div>
+          </div>
+        </div>
+
           <!-- Budget Progetto -->
           <div class="col-12 col-md-6 col-xl-4">
             <div class="card h-100 shadow-sm" data-endpoint="/projects/budget">
@@ -628,6 +646,63 @@
               <div class="table-responsive mt-3"><table class="table table-sm" id="dipDeptTable"><thead></thead><tbody></tbody></table></div>
             </div>
             <div class="card-footer bg-body-tertiary"><pre class="out" id="outDipDeptData" style="display:none"></pre></div>
+          </div>
+        </div>
+
+        <!-- Task Sospese -->
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="card h-100 shadow-sm" data-endpoint="/tasks/suspended">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+              <span class="fw-semibold small text-uppercase">Task Sospese</span>
+              <span class="status-chip" id="chipSuspended"></span>
+            </div>
+            <div class="card-body pb-2">
+              <form data-form="suspendedTasks" class="small">
+                <div class="mb-2"><label class="form-label">Token<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="dipendente"></label></div>
+                <div class="mb-2"><label class="form-label">Email Dipendente<input class="form-control form-control-sm" name="email_dipendente" value="dip_test@example.com" required></label></div>
+                <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="suspendedTasksBody" rows="3" class="form-control form-control-sm"></textarea></details>
+                <button data-action="suspendedTasks" class="btn btn-sm btn-outline-primary">Fetch</button>
+              </form>
+            </div>
+            <div class="card-footer bg-body-tertiary"><pre class="out" id="outSuspended"></pre></div>
+          </div>
+        </div>
+
+        <!-- Task Completate -->
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="card h-100 shadow-sm" data-endpoint="/tasks/completed">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+              <span class="fw-semibold small text-uppercase">Task Completate</span>
+              <span class="status-chip" id="chipCompleted"></span>
+            </div>
+            <div class="card-body pb-2">
+              <form data-form="completedTasks" class="small">
+                <div class="mb-2"><label class="form-label">Token<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="dipendente"></label></div>
+                <div class="mb-2"><label class="form-label">Email Dipendente<input class="form-control form-control-sm" name="email_dipendente" value="dip_test@example.com" required></label></div>
+                <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="completedTasksBody" rows="3" class="form-control form-control-sm"></textarea></details>
+                <button data-action="completedTasks" class="btn btn-sm btn-outline-primary">Fetch</button>
+              </form>
+            </div>
+            <div class="card-footer bg-body-tertiary"><pre class="out" id="outCompleted"></pre></div>
+          </div>
+        </div>
+
+        <!-- Task In Corso -->
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="card h-100 shadow-sm" data-endpoint="/tasks/in-progress">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+              <span class="fw-semibold small text-uppercase">Task In Corso</span>
+              <span class="status-chip" id="chipInProgress"></span>
+            </div>
+            <div class="card-body pb-2">
+              <form data-form="inProgressTasks" class="small">
+                <div class="mb-2"><label class="form-label">Token<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="dipendente"></label></div>
+                <div class="mb-2"><label class="form-label">Email Dipendente<input class="form-control form-control-sm" name="email_dipendente" value="dip_test@example.com" required></label></div>
+                <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="inProgressTasksBody" rows="3" class="form-control form-control-sm"></textarea></details>
+                <button data-action="inProgressTasks" class="btn btn-sm btn-outline-primary">Fetch</button>
+              </form>
+            </div>
+            <div class="card-footer bg-body-tertiary"><pre class="out" id="outInProgress"></pre></div>
           </div>
         </div>
     </div>

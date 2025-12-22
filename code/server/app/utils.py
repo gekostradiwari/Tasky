@@ -346,6 +346,61 @@ def manager_of_department(dept_field='id_dipartimento'):
         return wrapper
     return outer
 
+def member_of_department(dept_field='id_dipartimento'):
+    """Descrizione:
+    Decorator che verifica che l'utente (Manager o Dipendente) appartenga al dipartimento specificato nel payload.
+    """
+    def outer(fn):
+        from functools import wraps
+        from flask import request
+        from .repository import get_user_by_token
+        from .exceptions import AuthException
+
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            data = request.get_json() or {}
+            token = data.get('token')
+            if not token:
+                raise AuthException("AUTH_TOKEN_MISSING", "Token mancante", 401)
+
+            result = get_user_by_token(token)
+            if not result:
+                raise AuthException("AUTH_TOKEN_INVALID", "Token non valido", 403)
+            
+            user_type = result.get('type')
+            if user_type not in ('Manager', 'Dipendente'):
+                raise AuthException("AUTH_FORBIDDEN_ROLE", "Permesso negato: ruolo non autorizzato", 403)
+
+            user = result.get('user') or {}
+            if dept_field not in data or data.get(dept_field) is None:
+                from .exceptions import ValidationException
+                raise ValidationException(
+                    "MISSING_PARAMS",
+                    "Validazione fallita",
+                    400,
+                    {"fields": {dept_field: ["Missing data for required field."]}}
+                )
+
+            dept_req = data.get(dept_field)
+            dept_user = user.get('Dipartimento_id_dipartimento')
+            try:
+                same = int(dept_req) == int(dept_user)
+            except Exception:
+                same = str(dept_req) == str(dept_user)
+            
+            if not same:
+                raise AuthException("AUTH_FORBIDDEN_DEPARTMENT", "Permesso negato: dipartimento non corrispondente", 403)
+
+            kwargs['current_user'] = user
+            kwargs['current_type'] = user_type
+            # For backward compatibility if function expects 'manager' arg
+            if user_type == 'Manager':
+                kwargs['manager'] = user
+            
+            return fn(*args, **kwargs)
+        return wrapper
+    return outer
+
 def role_required(*roles):
     """Descrizione:
     Decorator generico che verifica che il token appartenga a un utente con tipo ammesso.
