@@ -1,5 +1,5 @@
 # TaskyAPI
-
+[nope]
 API Flask per gestione di Dipendenti, Manager, Progetti e Task con controllo di visibilità basato sul ruolo.
 
 ## Indice
@@ -307,3 +307,4 @@ Il passaggio previsto è permettere opzionalmente l'invio del token anche via he
 
 ---
 Ultimo aggiornamento: 2025-10-08
+
