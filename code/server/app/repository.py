@@ -177,14 +177,12 @@ def insertTask(id_task, nome, stato, descrizione, data_inizio, data_fine, id_pro
     try:
         with conn.cursor() as cursor:
             if id_task is None:
-                cols = ["nome","stato","descrizione","data_inizio","data_fine","Progetto_id_progetto","Dipendente_email","Manager_email"]
-                sql = sql_insert_helper('TASK', cols)
+                sql = "INSERT INTO TASK (nome, stato, descrizione, data_inizio, data_fine, Progetto_id_progetto, Dipendente_email, Manager_email) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
                 cursor.execute(sql, (nome, stato, descrizione, data_inizio, data_fine, id_progetto, dipendente_email, manager_email))
                 new_id = cursor.lastrowid
                 logger.info(f"Inserted new task (id={new_id}, nome='{nome}', progetto={id_progetto}, stato={stato})")
             else:
-                cols = ["id","nome","stato","descrizione","data_inizio","data_fine","Progetto_id_progetto","Dipendente_email","Manager_email"]
-                sql = sql_insert_helper('TASK', cols)
+                sql = "INSERT INTO TASK (id, nome, stato, descrizione, data_inizio, data_fine, Progetto_id_progetto, Dipendente_email, Manager_email) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
                 cursor.execute(sql, (id_task, nome, stato, descrizione, data_inizio, data_fine, id_progetto, dipendente_email, manager_email))
                 new_id = id_task
                 logger.info(f"Inserted task with explicit id={new_id}, nome='{nome}', progetto={id_progetto}")
