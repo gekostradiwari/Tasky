@@ -484,4 +484,37 @@
   qs('#btnSnapshot')?.addEventListener('click', ()=> fetchSnapshot());
   // primo caricamento
   setTimeout(()=> fetchSnapshot(), 150);
+
+  // Log Viewer Logic
+  const fetchLogBtn = qs('#fetchLogBtn');
+  const logFileSelect = qs('#logFileSelect');
+  const logOutput = qs('#logOutput');
+
+  if (fetchLogBtn) {
+    fetchLogBtn.addEventListener('click', async () => {
+      const filename = logFileSelect.value;
+      logOutput.textContent = 'Caricamento...';
+      try {
+        // Tester is at /tester/, logs are at /logs/
+        const res = await fetch('../logs/' + filename);
+        if (!res.ok) throw new Error(`Errore ${res.status}`);
+        const text = await res.text();
+        // Try to format JSON lines if possible
+        try {
+            const lines = text.trim().split('\n');
+            const formatted = lines.map(line => {
+                try { return JSON.stringify(JSON.parse(line), null, 2); } 
+                catch { return line; }
+            }).join('\n');
+            logOutput.textContent = formatted;
+        } catch {
+            logOutput.textContent = text;
+        }
+        // Scroll to bottom
+        logOutput.scrollTop = logOutput.scrollHeight;
+      } catch (e) {
+        logOutput.textContent = 'Errore nel caricamento del log: ' + e.message;
+      }
+    });
+  }
 })();
