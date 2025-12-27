@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify, g
 import logging
 import time
 
-from .utils import crypt, manager_of_department, manager_required, member_of_department
+from .utils import crypt, manager_of_department, manager_required, member_of_department, manager_of_project
 from .exceptions import ValidationException
 from . import manager as manager_module
 
@@ -777,7 +777,7 @@ def update_project(manager=None, **kwargs):
     return jsonify({"data": payload}), 200
 
 @bp.route('/delete/Project', methods=['POST'])
-@manager_of_department('id_dipartimento')
+@manager_of_project('id_progetto')
 def delete_project(manager=None, **kwargs):
     raw = request.get_json() or {}
     try:
@@ -788,7 +788,7 @@ def delete_project(manager=None, **kwargs):
     return jsonify({"data": project_row, "message": "Progetto eliminato"}), 200
 
 @bp.route('/update/Task', methods=['POST'])
-@manager_of_department('id_dipartimento')
+@manager_of_project('id_progetto')
 def update_task(manager=None, **kwargs):
     raw = request.get_json() or {}
     try:
@@ -799,7 +799,7 @@ def update_task(manager=None, **kwargs):
     return jsonify({"data": payload}), 200
 
 @bp.route('/delete/Task', methods=['POST'])
-@manager_of_department('id_dipartimento')
+@manager_of_project('id_progetto')
 def delete_task(manager=None, **kwargs):
     raw = request.get_json() or {}
     try:

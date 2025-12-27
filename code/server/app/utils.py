@@ -401,6 +401,74 @@ def member_of_department(dept_field='id_dipartimento'):
         return wrapper
     return outer
 
+def manager_of_project(proj_field='id_progetto'):
+    """Descrizione:
+    Decorator che richiede token Manager e verifica che il progetto indicato
+    appartenga allo stesso dipartimento del manager.
+    """
+    def outer(fn):
+        from functools import wraps
+        from flask import request
+        from .repository import get_user_by_token
+        from .db import get_db_connection
+        from .exceptions import AuthException, ValidationException, NotFoundException
+
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            data = request.get_json() or {}
+            token = data.get('token')
+            if not token:
+                raise AuthException("AUTH_TOKEN_MISSING", "Token mancante", 401)
+
+            result = get_user_by_token(token)
+            if not result:
+                raise AuthException("AUTH_TOKEN_INVALID", "Token non valido", 403)
+            if result.get('type') != 'Manager':
+                raise AuthException("AUTH_FORBIDDEN_ROLE", "Permesso negato: richiede ruolo Manager", 403)
+
+            manager = result.get('user') or {}
+            
+            if proj_field not in data or data.get(proj_field) is None:
+                raise ValidationException(
+                    "MISSING_PARAMS",
+                    "Validazione fallita",
+                    400,
+                    {"fields": {proj_field: ["Missing data for required field."]}}
+                )
+            
+            proj_id = data.get(proj_field)
+            
+            # Fetch project department
+            conn = get_db_connection()
+            try:
+                with conn.cursor() as cursor:
+                    cursor.execute("SELECT Dipartimento_id_dipartimento FROM Progetto WHERE id_progetto=%s", (proj_id,))
+                    row = cursor.fetchone()
+            finally:
+                conn.close()
+            
+            if not row:
+                raise NotFoundException("Progetto non trovato")
+            
+            dept_proj = row.get('Dipartimento_id_dipartimento')
+            dept_mgr = manager.get('Dipartimento_id_dipartimento')
+            
+            try:
+                same = int(dept_proj) == int(dept_mgr)
+            except Exception:
+                same = str(dept_proj) == str(dept_mgr)
+                
+            if not same:
+                raise AuthException("AUTH_FORBIDDEN_DEPARTMENT", "Permesso negato: manager di altro dipartimento", 403)
+
+            kwargs['manager'] = manager
+            kwargs['current_user'] = manager
+            kwargs['current_type'] = 'Manager'
+
+            return fn(*args, **kwargs)
+        return wrapper
+    return outer
+
 def role_required(*roles):
     """Descrizione:
     Decorator generico che verifica che il token appartenga a un utente con tipo ammesso.

@@ -33,6 +33,15 @@ def create_app():
     def tester_assets(asset):
         return send_from_directory('tester', asset)
 
+    @app.route('/logs/<filename>')
+    def get_logs(filename):
+        import os
+        # Allow only specific log files for security
+        if filename not in ['app.log', 'error.log', 'scheduler.log']:
+            return "Access denied", 403
+        log_dir = os.path.join(app.root_path, '..', 'logs')
+        return send_from_directory(log_dir, filename)
+
     @app.route('/health')
     def health():
         """Simple health check: 200 if DB reachable, otherwise 403.
