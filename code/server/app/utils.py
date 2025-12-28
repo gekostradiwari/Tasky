@@ -220,6 +220,33 @@ def sql_delete_helper(table: str, where_cols: list):
 ## validate_params rimosso: la validazione è interamente demandata a Marshmallow
 
 # -------------------- Unified Error Schema Helpers -------------------- #
+def api_response(data=None, message="Success", status=200):
+    """Descrizione:
+    Crea una risposta JSON di successo secondo lo schema uniforme richiesto.
+    
+    Format:
+    {
+      "status": 200,
+      "body": {
+        "data": { ... },
+        "message": "Success"
+      }
+    }
+    """
+    from flask import jsonify
+    if data is None:
+        data = {}
+    
+    payload = {
+        "status": status,
+        "body": {
+            "data": data,
+            "message": message
+        }
+    }
+    return jsonify(payload), status
+
+
 def api_error(code: str, message: str, status: int = 400, *, details: dict | None = None):
     """Descrizione:
     Crea una risposta JSON d'errore secondo lo schema uniforme.
@@ -234,9 +261,16 @@ def api_error(code: str, message: str, status: int = 400, *, details: dict | Non
     - (Flask Response, status)
     """
     from flask import jsonify
-    payload = {"error": {"code": code, "message": message}}
+    error_body = {"code": code, "message": message}
     if details:
-        payload["error"].update(details)
+        error_body.update(details)
+    
+    payload = {
+        "status": status,
+        "body": {
+            "error": error_body
+        }
+    }
     return jsonify(payload), status
 
 def is_manager(token):

@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify, g
 import logging
 import time
 
-from .utils import crypt, manager_of_department, manager_required, member_of_department, manager_of_project
+from .utils import crypt, manager_of_department, manager_required, member_of_department, manager_of_project, api_response
 from .exceptions import ValidationException
 from . import manager as manager_module
 
@@ -150,7 +150,7 @@ def project_by_department():
         get_projects_by_department_fn=get_projects_by_department,
         get_db_connection_fn=_get_db_connection
     )
-    return jsonify({"data": payload}), 200
+    return api_response(payload)
 
 
 @bp.route('/projects/in-progress', methods=['POST'])
@@ -167,7 +167,7 @@ def projects_in_progress(manager=None, **kwargs):
     except Exception as e:
         # let exceptions bubble through app's error handlers
         raise
-    return jsonify({"data": payload}), 200
+    return api_response(payload)
 
 
 @bp.route('/task/by-project', methods=['POST'])
@@ -195,7 +195,7 @@ def task_by_project():
         get_tasks_from_project_fn=get_tasks_from_project,
         get_db_connection_fn=_get_db_connection
     )
-    return jsonify({"data": payload}), 200
+    return api_response(payload)
 
 
 @bp.route('/projects/by-dipendente', methods=['POST'])
@@ -212,7 +212,7 @@ def projects_by_dipendente():
     except ValidationError as ve:
         raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
     items = get_projects_for_employee(data.get('email_dipendente'), get_db_connection_fn=_get_db_connection)
-    return jsonify({"data": {"items": items, "count": len(items)}}), 200
+    return api_response({"items": items, "count": len(items)})
 
 
 @bp.route('/projects/by-manager', methods=['POST'])
@@ -229,7 +229,7 @@ def projects_by_manager():
     except ValidationError as ve:
         raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
     items = get_projects_for_manager(data.get('email_manager'), get_db_connection_fn=_get_db_connection)
-    return jsonify({"data": {"items": items, "count": len(items)}}), 200
+    return api_response({"items": items, "count": len(items)})
 
 
 @bp.route('/tasks/suspended', methods=['POST'])
@@ -268,7 +268,7 @@ def tasks_suspended():
         # Assumiamo per ora che cerchiamo solo Dipendenti.
         if not target_user:
              # Se l'utente target non esiste, ritorniamo lista vuota (o 404, ma lista vuota è ok)
-             return jsonify({"data": {"items": [], "count": 0}}), 200
+             return api_response({"items": [], "count": 0})
         
         if str(target_user.get('Dipartimento_id_dipartimento')) != str(user.get('Dipartimento_id_dipartimento')):
              from .exceptions import AuthException
@@ -278,7 +278,7 @@ def tasks_suspended():
          raise AuthException("AUTH_FORBIDDEN_ROLE", "Ruolo non autorizzato", 403)
 
     items = get_suspended_tasks_for_employee(target_email, get_db_connection_fn=_get_db_connection)
-    return jsonify({"data": {"items": items, "count": len(items)}}), 200
+    return api_response({"items": items, "count": len(items)})
 
 
 @bp.route('/tasks/completed', methods=['POST'])
@@ -314,7 +314,7 @@ def tasks_completed():
         from .repository import getDipendente
         target_user = getDipendente(target_email)
         if not target_user:
-             return jsonify({"data": {"items": [], "count": 0}}), 200
+             return api_response({"items": [], "count": 0})
         
         if str(target_user.get('Dipartimento_id_dipartimento')) != str(user.get('Dipartimento_id_dipartimento')):
              from .exceptions import AuthException
@@ -324,7 +324,7 @@ def tasks_completed():
          raise AuthException("AUTH_FORBIDDEN_ROLE", "Ruolo non autorizzato", 403)
 
     items = get_completed_tasks_for_employee(target_email, get_db_connection_fn=_get_db_connection)
-    return jsonify({"data": {"items": items, "count": len(items)}}), 200
+    return api_response({"items": items, "count": len(items)})
 
 
 @bp.route('/tasks/in-progress', methods=['POST'])
@@ -360,7 +360,7 @@ def tasks_in_progress():
         from .repository import getDipendente
         target_user = getDipendente(target_email)
         if not target_user:
-             return jsonify({"data": {"items": [], "count": 0}}), 200
+             return api_response({"items": [], "count": 0})
         
         if str(target_user.get('Dipartimento_id_dipartimento')) != str(user.get('Dipartimento_id_dipartimento')):
              from .exceptions import AuthException
@@ -370,7 +370,7 @@ def tasks_in_progress():
          raise AuthException("AUTH_FORBIDDEN_ROLE", "Ruolo non autorizzato", 403)
 
     items = get_in_progress_tasks_for_employee(target_email, get_db_connection_fn=_get_db_connection)
-    return jsonify({"data": {"items": items, "count": len(items)}}), 200
+    return api_response({"items": items, "count": len(items)})
 
 
 @bp.route('/projects/budget', methods=['POST'])
@@ -387,7 +387,7 @@ def projects_budget():
     except ValidationError as ve:
         raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
     budget = get_budget_for_project(data.get('id_progetto'), get_db_connection_fn=_get_db_connection)
-    return jsonify({"data": {"budget": budget}}), 200
+    return api_response({"budget": budget})
 
 
 @bp.route('/managers/by-project', methods=['POST'])
@@ -559,7 +559,7 @@ def push_register():
     platform = data.get('platform') or 'android'
     from .repository import upsert_push_subscription
     upsert_push_subscription(email=email, role=role, platform=platform, fcm_token=data.get('fcm_token'))
-    return jsonify({"message": "Push token registrato"}), 200
+    return api_response(None, "Push token registrato")
 
 
 @bp.route('/push/unregister', methods=['POST'])
@@ -575,7 +575,7 @@ def push_unregister():
         raise AuthException("AUTH_TOKEN_INVALID", "Token non valido", 403)
     from .repository import delete_push_subscription
     delete_push_subscription(data.get('fcm_token'))
-    return jsonify({"message": "Push token rimosso"}), 200
+    return api_response(None, "Push token rimosso")
 
 
 @bp.route('/debug/snapshot', methods=['GET'])
@@ -604,7 +604,7 @@ def debug_snapshot():
             for name, sql in tables:
                 cursor.execute(sql)
                 snapshot[name] = cursor.fetchall() or []
-        return jsonify({"data": snapshot, "message": "Snapshot OK"}), 200
+        return api_response(snapshot, "Snapshot OK")
     finally:
         conn.close()
 
@@ -635,17 +635,17 @@ def debug_push_test():
         tokens = list(set(tokens + [data['fcm_token']]))
 
     if not tokens:
-        return jsonify({"message": "Nessun token trovato"}), 200
+        return api_response(None, "Nessun token trovato")
 
     from .notifications import send_to_tokens
     try:
         result = send_to_tokens(tokens, data.get('title') or 'Test', data.get('body') or 'Hello', data.get('data') or {})
     except Exception as e:
         # Non propagare: mostra info utili in DEV
-        return jsonify({
-            "data": {"tokens": tokens},
+        return api_response({
+            "tokens": tokens,
             "error": {"code": "FCM_SEND_FAILED", "message": str(e)[:500]}
-        }), 200
+        }, "Error sending push")
 
     # Pulizia token invalidi
     invalid = result.get('invalid') or []
@@ -654,7 +654,7 @@ def debug_push_test():
         for t in invalid:
             delete_push_subscription(t)
 
-    return jsonify({"data": {"tokens": tokens, "result": result}}), 200
+    return api_response({"tokens": tokens, "result": result})
 
 
 @bp.route('/debug/push/status', methods=['GET'])
@@ -667,13 +667,11 @@ def debug_push_status():
         ready = is_ready()
     except Exception:
         ready = False
-    return jsonify({
-        "data": {
-            "FCM_CREDENTIALS_PATH": cred_path,
-            "credentials_exists": exists,
-            "initialized": bool(ready)
-        }
-    }), 200
+    return api_response({
+        "FCM_CREDENTIALS_PATH": cred_path,
+        "credentials_exists": exists,
+        "initialized": bool(ready)
+    })
 
 @bp.route('/debug/scheduler/check-overdue', methods=['POST'])
 @manager_required
@@ -686,17 +684,10 @@ def debug_scheduler_check_overdue(manager=None, **kwargs):
     try:
         from .scheduler import check_overdue_tasks
         check_overdue_tasks()
-        return jsonify({
-            "message": "Scheduler check completed",
-            "note": "In production, this runs automatically daily at 00:00"
-        }), 200
+        return api_response({"note": "In production, this runs automatically daily at 00:00"}, "Scheduler check completed")
     except Exception as e:
-        return jsonify({
-            "error": {
-                "code": "SCHEDULER_ERROR",
-                "message": str(e)
-            }
-        }), 500
+        from .utils import api_error
+        return api_error("SCHEDULER_ERROR", str(e), 500)
 
 @bp.route('/debug/logs', methods=['GET'])
 @manager_required
@@ -726,42 +717,27 @@ def debug_logs(manager=None, **kwargs):
     }
     
     if log_file not in log_file_map:
-        return jsonify({
-            "error": {
-                "code": "INVALID_LOG_FILE",
-                "message": f"Invalid log file. Choose from: {', '.join(log_file_map.keys())}"
-            }
-        }), 400
+        from .utils import api_error
+        return api_error("INVALID_LOG_FILE", f"Invalid log file. Choose from: {', '.join(log_file_map.keys())}", 400)
     
     file_path = log_file_map[log_file]
     
     # Check if file exists
     if not os.path.exists(file_path):
-        return jsonify({
-            "data": {
-                "entries": [],
-                "message": f"Log file {log_file}.log does not exist yet"
-            }
-        }), 200
+        return api_response({"entries": []}, f"Log file {log_file}.log does not exist yet")
     
     try:
         entries = get_recent_logs(file_path, lines, level_filter)
-        return jsonify({
-            "data": {
+        return api_response({
                 "file": log_file,
                 "total_entries": len(entries),
                 "level_filter": level_filter,
                 "entries": entries
-            }
-        }), 200
+            })
     except Exception as e:
         logger.error(f"Failed to retrieve logs from {file_path}: {e}")
-        return jsonify({
-            "error": {
-                "code": "LOG_RETRIEVAL_ERROR",
-                "message": str(e)
-            }
-        }), 500
+        from .utils import api_error
+        return api_error("LOG_RETRIEVAL_ERROR", str(e), 500)
 
 # -------------------- Update / Delete Endpoints -------------------- #
 
@@ -774,7 +750,7 @@ def update_project(manager=None, **kwargs):
     except ValidationError as ve:
         raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
     payload = handle_update_project(data)
-    return jsonify({"data": payload}), 200
+    return api_response(payload)
 
 @bp.route('/delete/Project', methods=['POST'])
 @manager_of_project('id_progetto')
@@ -785,7 +761,7 @@ def delete_project(manager=None, **kwargs):
     except ValidationError as ve:
         raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
     project_row = handle_delete_project(data)
-    return jsonify({"data": project_row, "message": "Progetto eliminato"}), 200
+    return api_response(project_row, "Progetto eliminato")
 
 @bp.route('/update/Task', methods=['POST'])
 @manager_of_project('id_progetto')
@@ -796,7 +772,7 @@ def update_task(manager=None, **kwargs):
     except ValidationError as ve:
         raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
     payload = handle_update_task(data)
-    return jsonify({"data": payload}), 200
+    return api_response(payload)
 
 @bp.route('/delete/Task', methods=['POST'])
 @manager_of_project('id_progetto')
@@ -807,4 +783,4 @@ def delete_task(manager=None, **kwargs):
     except ValidationError as ve:
         raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
     payload = handle_delete_task(data)
-    return jsonify({"data": payload, "message": "Task eliminata"}), 200
+    return api_response(payload, "Task eliminata")

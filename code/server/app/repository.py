@@ -1,6 +1,7 @@
 from .utils import (
     generateToken, integrity_errors_project, integrity_errors,
-    sql_insert_helper, sql_select_helper, sql_update_helper, sql_delete_helper
+    sql_insert_helper, sql_select_helper, sql_update_helper, sql_delete_helper,
+    api_response
 )
 from .exceptions import ServerException, ValidationException, AuthException
 from .db import get_db_connection
@@ -152,7 +153,7 @@ def handle_task(data, insert_func, args_builder, success_message='Created'):
         # non bloccare la response
         pass
 
-    return jsonify({"data": {"id_task": id}, "message": success_message}), 201
+    return api_response({"id_task": id}, success_message, 201)
 
 def insertTask(id_task, nome, stato, descrizione, data_inizio, data_fine, id_progetto, dipendente_email=None, manager_email=None):
     """Descrizione:
@@ -831,7 +832,7 @@ def handle_project(data, insert_func, args_builder, success_message='Created'):
         integrity_errors_project(e)
         raise ServerException(details={"orig": str(e)})
 
-    return jsonify({"data": {"id_progetto": id}, "message": success_message}), 201
+    return api_response({"id_progetto": id}, success_message, 201)
 
 def handle_login(data):
     """Descrizione:
@@ -898,17 +899,14 @@ def handle_login(data):
         logger.error(f"Error fetching user details after login: {e}")
         pass
 
-    return jsonify({
-        "data": {
-            "token": token,
-            "type": tipo,
-            "id_dipartimento": dept_id,
-            "nome_dipartimento": nome_dipartimento,
-            "name": display_name,
-            "sesso": sesso
-        },
-        "message": "Login effettuato"
-    }), 200
+    return api_response({
+        "token": token,
+        "type": tipo,
+        "id_dipartimento": dept_id,
+        "nome_dipartimento": nome_dipartimento,
+        "name": display_name,
+        "sesso": sesso
+    }, "Login effettuato", 200)
 
 def handle_register(data, insert_func, args_builder, success_message='Created'):
     """Descrizione:
@@ -932,7 +930,7 @@ def handle_register(data, insert_func, args_builder, success_message='Created'):
         integrity_errors(e)
         raise ServerException(details={"orig": str(e)})
 
-    return jsonify({"data": {"token": token}, "message": success_message}), 201
+    return api_response({"token": token}, success_message, 201)
 
 def _insert_user(table: str, columns: list, values: tuple) -> str:
     """Descrizione:
@@ -1413,7 +1411,7 @@ def handle_insert_dipartimento(data, insert_func, args_builder, success_message=
         integrity_errors_department(e)
         raise ServerException(details={"orig": str(e)})
 
-    return jsonify({"data": {"id_dipartimento": id}, "message": success_message}), 201
+    return api_response({"id_dipartimento": id}, success_message, 201)
 
 
 def getDipendente(email: str):
