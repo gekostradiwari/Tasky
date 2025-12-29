@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify, g
 import logging
 import time
 
-from .utils import crypt, manager_of_department, manager_required, member_of_department, manager_of_project, api_response
+from .utils import crypt, manager_of_department, manager_required, member_of_department, manager_of_project, manager_of_task, assignee_of_task, api_response
 from .exceptions import ValidationException
 from . import manager as manager_module
 
@@ -22,10 +22,10 @@ from .repository import (
     get_completed_tasks_for_employee, get_in_progress_tasks_for_employee,
     get_projects_for_manager,
     handle_update_project, 
-    handle_delete_project, handle_update_task, handle_delete_task
+    handle_delete_project, handle_update_task, handle_delete_task, handle_update_task_status
 )
 
-from .schemas import ProjectUpdateSchema, ProjectDeleteSchema, TaskUpdateSchema, TaskDeleteSchema
+from .schemas import ProjectUpdateSchema, ProjectDeleteSchema, TaskUpdateSchema, TaskDeleteSchema, TaskStatusUpdateSchema
 from .schemas import PushRegisterSchema, PushUnregisterSchema, PushTestSchema
 
 bp = Blueprint('api', __name__, url_prefix='/api')
@@ -764,7 +764,7 @@ def delete_project(manager=None, **kwargs):
     return api_response(project_row, "Progetto eliminato")
 
 @bp.route('/update/Task', methods=['POST'])
-@manager_of_project('id_progetto')
+@manager_of_task('id')
 def update_task(manager=None, **kwargs):
     raw = request.get_json() or {}
     try:
@@ -774,8 +774,19 @@ def update_task(manager=None, **kwargs):
     payload = handle_update_task(data)
     return api_response(payload)
 
+@bp.route('/update/Task/Status', methods=['POST'])
+@assignee_of_task('id')
+def update_task_status(current_user=None, **kwargs):
+    raw = request.get_json() or {}
+    try:
+        data = TaskStatusUpdateSchema().load(raw)
+    except ValidationError as ve:
+        raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": ve.messages})
+    payload = handle_update_task_status(data)
+    return api_response(payload)
+
 @bp.route('/delete/Task', methods=['POST'])
-@manager_of_project('id_progetto')
+@manager_of_task('id')
 def delete_task(manager=None, **kwargs):
     raw = request.get_json() or {}
     try:

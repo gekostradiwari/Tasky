@@ -1218,12 +1218,23 @@ def handle_delete_project(data, delete_func=deleteProject, get_db_connection_fn=
 def handle_update_task(data, update_func=updateTask, get_tasks_fn=get_tasks_from_project):
     from .exceptions import ValidationException, NotFoundException, ServerException
     idt = data.get('id')
-    idp = data.get('id_progetto')
-    if idt is None or idp is None:
-        missing = {}
-        if idt is None: missing['id'] = ["Missing data for required field."]
-        if idp is None: missing['id_progetto'] = ["Missing data for required field."]
-        raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": missing})
+    if idt is None:
+        raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": {'id': ["Missing data for required field."]}})
+    
+    # Fetch task to get project id
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT Progetto_id_progetto FROM TASK WHERE id=%s", (idt,))
+            row = cursor.fetchone()
+    finally:
+        conn.close()
+    
+    if not row:
+        raise NotFoundException("Task non trovata")
+    
+    idp = row.get('Progetto_id_progetto')
+
     field_mapping = {
         'nome': 'nome',
         'stato': 'stato',
@@ -1272,24 +1283,84 @@ def handle_update_task(data, update_func=updateTask, get_tasks_fn=get_tasks_from
         pass
     return {"items": items, "count": len(items)}
 
+def handle_update_task_status(data, update_func=updateTask):
+    """Descrizione:
+    Handler specifico per aggiornamento stato task da parte del dipendente.
+    """
+    from .exceptions import ValidationException, NotFoundException, ServerException
+    idt = data.get('id')
+    new_status = data.get('stato')
+    
+    if idt is None:
+        raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": {'id': ["Missing data for required field."]}})
+    if not new_status:
+        raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": {'stato': ["Missing data for required field."]}})
+
+    # Fetch task to get project id
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT Progetto_id_progetto FROM TASK WHERE id=%s", (idt,))
+            row = cursor.fetchone()
+    finally:
+        conn.close()
+    
+    if not row:
+        raise NotFoundException("Task non trovata")
+    
+    idp = row.get('Progetto_id_progetto')
+
+    updates = {'stato': new_status}
+    
+    try:
+        updated = update_func(idt, idp, updates)
+    except Exception as e:
+        raise ServerException(details={"orig": str(e)})
+        
+    if not updated:
+        raise NotFoundException("Task non trovata")
+        
+    # Notify manager (best-effort, async)
+    try:
+        recipients = [e for e in {updated.get('Manager_email')} if e]
+        if recipients:
+            _notify_emails(
+                recipients,
+                title="Stato Task Aggiornato",
+                body=f"Task {idt} stato cambiato in {new_status}",
+                data={
+                    "type": "task.status_update",
+                    "id": str(idt),
+                    "id_progetto": str(idp),
+                    "stato": str(new_status),
+                },
+            )
+    except Exception:
+        pass
+
+    return updated
+
+
 def handle_delete_task(data, delete_func=deleteTask, get_tasks_fn=get_tasks_from_project):
     from .exceptions import ValidationException, NotFoundException, ServerException
     idt = data.get('id')
-    idp = data.get('id_progetto')
-    if idt is None or idp is None:
-        missing = {}
-        if idt is None: missing['id'] = ["Missing data for required field."]
-        if idp is None: missing['id_progetto'] = ["Missing data for required field."]
-        raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": missing})
-    # fetch before delete per notification recipients
+    if idt is None:
+        raise ValidationException("MISSING_PARAMS", "Validazione fallita", 400, {"fields": {'id': ["Missing data for required field."]}})
+    
+    # fetch before delete per notification recipients and project id
     conn = get_db_connection()
     row_before = None
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM TASK WHERE id=%s AND Progetto_id_progetto=%s", (idt, idp))
+            cursor.execute("SELECT * FROM TASK WHERE id=%s", (idt,))
             row_before = cursor.fetchone()
     finally:
         conn.close()
+    
+    if not row_before:
+        raise NotFoundException("Task non trovata")
+        
+    idp = row_before.get('Progetto_id_progetto')
 
     try:
         ok = delete_func(idt, idp)

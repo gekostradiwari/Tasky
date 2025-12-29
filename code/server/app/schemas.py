@@ -128,7 +128,7 @@ class ProjectDeleteSchema(Schema):
 class TaskUpdateSchema(Schema):
     token = fields.Str(required=True)
     id = fields.Integer(required=True, strict=True)
-    id_progetto = fields.Integer(required=True, strict=True)
+    # id_progetto rimosso come richiesto
     id_dipartimento = fields.Integer(load_default=None, strict=True)
     nome = fields.Str(load_default=None)
     stato = fields.Str(load_default=None)
@@ -142,8 +142,14 @@ class TaskUpdateSchema(Schema):
 class TaskDeleteSchema(Schema):
     token = fields.Str(required=True)
     id = fields.Integer(required=True, strict=True)
-    id_progetto = fields.Integer(required=True, strict=True)
+    # id_progetto rimosso come richiesto
     id_dipartimento = fields.Integer(load_default=None, strict=True)
+
+
+class TaskStatusUpdateSchema(Schema):
+    token = fields.Str(required=True)
+    id = fields.Integer(required=True, strict=True)
+    stato = NonEmptyStr
 
 
 class PushRegisterSchema(Schema):

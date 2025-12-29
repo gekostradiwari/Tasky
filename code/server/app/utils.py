@@ -494,6 +494,143 @@ def manager_of_project(proj_field='id_progetto'):
         return wrapper
     return outer
 
+def manager_of_task(task_field='id'):
+    """Descrizione:
+    Decorator che richiede token Manager e verifica che la task indicata
+    appartenga a un progetto dello stesso dipartimento del manager.
+    """
+    def outer(fn):
+        from functools import wraps
+        from flask import request
+        from .repository import get_user_by_token
+        from .db import get_db_connection
+        from .exceptions import AuthException, ValidationException, NotFoundException
+
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            data = request.get_json() or {}
+            token = data.get('token')
+            if not token:
+                raise AuthException("AUTH_TOKEN_MISSING", "Token mancante", 401)
+
+            result = get_user_by_token(token)
+            if not result:
+                raise AuthException("AUTH_TOKEN_INVALID", "Token non valido", 403)
+            if result.get('type') != 'Manager':
+                raise AuthException("AUTH_FORBIDDEN_ROLE", "Permesso negato: richiede ruolo Manager", 403)
+
+            manager = result.get('user') or {}
+            
+            if task_field not in data or data.get(task_field) is None:
+                raise ValidationException(
+                    "MISSING_PARAMS",
+                    "Validazione fallita",
+                    400,
+                    {"fields": {task_field: ["Missing data for required field."]}}
+                )
+            
+            task_id = data.get(task_field)
+            
+            # Fetch task project and department
+            conn = get_db_connection()
+            try:
+                with conn.cursor() as cursor:
+                    # Join TASK -> Progetto to get department directly
+                    sql = """
+                        SELECT p.Dipartimento_id_dipartimento 
+                        FROM TASK t
+                        JOIN Progetto p ON t.Progetto_id_progetto = p.id_progetto
+                        WHERE t.id = %s
+                    """
+                    cursor.execute(sql, (task_id,))
+                    row = cursor.fetchone()
+            finally:
+                conn.close()
+            
+            if not row:
+                raise NotFoundException("Task non trovata")
+            
+            dept_proj = row.get('Dipartimento_id_dipartimento')
+            dept_mgr = manager.get('Dipartimento_id_dipartimento')
+            
+            try:
+                same = int(dept_proj) == int(dept_mgr)
+            except Exception:
+                same = str(dept_proj) == str(dept_mgr)
+                
+            if not same:
+                raise AuthException("AUTH_FORBIDDEN_DEPARTMENT", "Permesso negato: manager di altro dipartimento", 403)
+
+            kwargs['manager'] = manager
+            kwargs['current_user'] = manager
+            kwargs['current_type'] = 'Manager'
+
+            return fn(*args, **kwargs)
+        return wrapper
+    return outer
+
+def assignee_of_task(task_field='id'):
+    """Descrizione:
+    Decorator che richiede token Dipendente e verifica che la task indicata
+    sia assegnata al dipendente stesso.
+    """
+    def outer(fn):
+        from functools import wraps
+        from flask import request
+        from .repository import get_user_by_token
+        from .db import get_db_connection
+        from .exceptions import AuthException, ValidationException, NotFoundException
+
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            data = request.get_json() or {}
+            token = data.get('token')
+            if not token:
+                raise AuthException("AUTH_TOKEN_MISSING", "Token mancante", 401)
+
+            result = get_user_by_token(token)
+            if not result:
+                raise AuthException("AUTH_TOKEN_INVALID", "Token non valido", 403)
+            if result.get('type') != 'Dipendente':
+                raise AuthException("AUTH_FORBIDDEN_ROLE", "Permesso negato: richiede ruolo Dipendente", 403)
+
+            dipendente = result.get('user') or {}
+            email_dipendente = dipendente.get('email')
+            
+            if task_field not in data or data.get(task_field) is None:
+                raise ValidationException(
+                    "MISSING_PARAMS",
+                    "Validazione fallita",
+                    400,
+                    {"fields": {task_field: ["Missing data for required field."]}}
+                )
+            
+            task_id = data.get(task_field)
+            
+            # Fetch task assignee
+            conn = get_db_connection()
+            try:
+                with conn.cursor() as cursor:
+                    sql = "SELECT Dipendente_email FROM TASK WHERE id = %s"
+                    cursor.execute(sql, (task_id,))
+                    row = cursor.fetchone()
+            finally:
+                conn.close()
+            
+            if not row:
+                raise NotFoundException("TASK_NOT_FOUND", f"Task {task_id} non trovata")
+            
+            if row['Dipendente_email'] != email_dipendente:
+                raise AuthException("AUTH_FORBIDDEN_ACCESS", "Non sei assegnatario di questa task", 403)
+
+            kwargs['current_user'] = dipendente
+            kwargs['current_type'] = 'Dipendente'
+
+            return fn(*args, **kwargs)
+        return wrapper
+    return outer
+
+
 def role_required(*roles):
     """Descrizione:
     Decorator generico che verifica che il token appartenga a un utente con tipo ammesso.
