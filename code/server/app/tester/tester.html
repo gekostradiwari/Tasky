@@ -390,7 +390,6 @@
               <div class="row g-2 mb-2">
                 <div class="col"><label class="form-label">Token Mgr<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="manager"></label></div>
                 <div class="col"><label class="form-label">ID Task<input class="form-control form-control-sm" name="id" required></label></div>
-                <div class="col"><label class="form-label">ID Progetto<input class="form-control form-control-sm" name="id_progetto" required></label></div>
               </div>
               <div class="row g-2 mb-2">
                 <div class="col"><label class="form-label">Dip. ID<input class="form-control form-control-sm" name="id_dipartimento" placeholder="1"></label></div>
@@ -416,6 +415,28 @@
         </div>
       </div>
 
+      <!-- Update Task Status (Dipendente) -->
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm" data-endpoint="/update/Task/Status">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small text-uppercase">Update Task Status (Dip)</span>
+            <span class="status-chip" id="chipUpdTaskStatus"></span>
+          </div>
+          <div class="card-body pb-2">
+            <form data-form="updTaskStatus" class="small">
+              <div class="row g-2 mb-2">
+                <div class="col"><label class="form-label">Token Dip<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="any"></label></div>
+                <div class="col"><label class="form-label">ID Task<input class="form-control form-control-sm" name="id" required></label></div>
+              </div>
+              <div class="mb-2"><label class="form-label">Nuovo Stato<input class="form-control form-control-sm" name="stato" placeholder="Completed" required></label></div>
+              <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="updTaskStatusBody" rows="3" class="form-control form-control-sm"></textarea></details>
+              <button data-action="updateTaskStatus" class="btn btn-sm btn-outline-primary">Aggiorna Stato</button>
+            </form>
+          </div>
+          <div class="card-footer bg-body-tertiary"><pre class="out" id="outUpdTaskStatus"></pre></div>
+        </div>
+      </div>
+
       <!-- Delete Task -->
       <div class="col-12 col-md-6 col-xl-4">
         <div class="card h-100 shadow-sm" data-endpoint="/delete/Task">
@@ -428,7 +449,6 @@
               <div class="row g-2 mb-2">
                 <div class="col"><label class="form-label">Token Mgr<input class="form-control form-control-sm" name="token" placeholder="auto" data-autofill="manager"></label></div>
                 <div class="col"><label class="form-label">ID Task<input class="form-control form-control-sm" name="id" required></label></div>
-                <div class="col"><label class="form-label">ID Progetto<input class="form-control form-control-sm" name="id_progetto" required></label></div>
               </div>
               <div class="mb-2"><label class="form-label">Dip. ID<input class="form-control form-control-sm" name="id_dipartimento" placeholder="1"></label></div>
               <details class="raw-toggle small mb-2"><summary>JSON grezzo</summary><textarea id="delTaskBody" rows="3" class="form-control form-control-sm"></textarea></details>

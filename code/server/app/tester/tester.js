@@ -334,6 +334,10 @@
         const outEl = qs('#outUpdTask');
         await call('/update/Task', payload, outEl, 'chipUpdTask');
         break; }
+      case 'updateTaskStatus': {
+        const outEl = qs('#outUpdTaskStatus');
+        await call('/update/Task/Status', payload, outEl, 'chipUpdTaskStatus');
+        break; }
       case 'deleteTask': {
         const outEl = qs('#outDelTask');
         await call('/delete/Task', payload, outEl, 'chipDelTask');
