@@ -105,6 +105,24 @@ Legenda colonne:
      - –
      - data.budget
      - MISSING_PARAMS
+   * - POST /tasks/suspended
+     - Manager/Dipendente
+     - token, email_dipendente
+     - –
+     - data.items[], count
+     - AUTH_*, MISSING_PARAMS
+   * - POST /tasks/completed
+     - Manager/Dipendente
+     - token, email_dipendente
+     - –
+     - data.items[], count
+     - AUTH_*, MISSING_PARAMS
+   * - POST /tasks/in-progress
+     - Manager/Dipendente
+     - token, email_dipendente
+     - –
+     - data.items[], count
+     - AUTH_*, MISSING_PARAMS
    * - POST /add/Task
      - Manager
      - token, nome, stato, descrizione, data_inizio, data_fine, id_progetto, id_dipartimento, email_dipendente, email_manager, (id)
@@ -113,16 +131,22 @@ Legenda colonne:
      - AUTH_*, MISSING_PARAMS, DB_INTEGRITY_ERROR
    * - POST /update/Task
      - Manager
-     - token, id, id_progetto, id_dipartimento, <≥1 campo aggiornabile>
+     - token, id, id_dipartimento, <≥1 campo aggiornabile>
      - –
      - data.items[], count
      - AUTH_*, NOT_FOUND, MISSING_PARAMS
    * - POST /delete/Task
      - Manager
-     - token, id, id_progetto, id_dipartimento
+     - token, id, id_dipartimento
      - –
      - data.items[], count
      - AUTH_*, NOT_FOUND, MISSING_PARAMS
+   * - POST /update/Task/Status
+     - Dipendente
+     - token, id, stato
+     - –
+     - data.id, data.stato
+     - AUTH_FORBIDDEN_ACCESS, NOT_FOUND, MISSING_PARAMS
    * - POST /task/by-project
      - Manager/Dipendente
      - token, id_progetto, (id_dipartimento*)
@@ -400,7 +424,7 @@ Response 201:
 Request (almeno un campo aggiornabile: nome, stato, descrizione, data_inizio, data_fine, email_dipendente, email_manager):
 .. code-block:: json
 
-  { "token": "<TOKEN_MANAGER>", "id": 7, "id_progetto": 101, "id_dipartimento": 1, "stato": "InProgress" }
+  { "token": "<TOKEN_MANAGER>", "id": 7, "id_dipartimento": 1, "stato": "InProgress" }
 Response 200:
 .. code-block:: json
 
@@ -410,13 +434,23 @@ Response 200:
 Request:
 .. code-block:: json
 
-  { "token": "<TOKEN_MANAGER>", "id": 7, "id_progetto": 101, "id_dipartimento": 1 }
+  { "token": "<TOKEN_MANAGER>", "id": 7, "id_dipartimento": 1 }
 Response 200:
 .. code-block:: json
 
   { "data": { "items": [], "count": 0 }, "message": "Task eliminata" }
 
-**20. Task by Project (Manager)**  
+**20. Update Task Status (Dipendente)**
+Request:
+.. code-block:: json
+
+  { "token": "<TOKEN_DIPENDENTE>", "id": 7, "stato": "Completed" }
+Response 200:
+.. code-block:: json
+
+  { "data": { "id": 7, "stato": "Completed", "nome": "Setup ambiente", ... }, "message": "Success" }
+
+**21. Task by Project (Manager)**  
 Request:
 .. code-block:: json
 
@@ -426,7 +460,7 @@ Response 200:
 
   { "data": { "items": [ { "id": 7, "stato": "Open" } ], "count": 1, "scope": "all" } }
 
-**21. Task by Project (Dipendente)**  
+**22. Task by Project (Dipendente)**  
 Request:
 .. code-block:: json
 
@@ -436,7 +470,7 @@ Response 200:
 
   { "data": { "items": [ { "id": 7, "stato": "Open" } ], "count": 1, "scope": "own" } }
 
-**22. Dipendenti by Project**  
+**23. Dipendenti by Project**  
 Request:
 .. code-block:: json
 
@@ -446,7 +480,7 @@ Response 200:
 
   { "data": { "items": [ { "email": "dip@example.com" } ], "count": 1, "scope": "all" } }
 
-**23. Managers by Project (Manager)**  
+**24. Managers by Project (Manager)**  
 Request:
 .. code-block:: json
 
@@ -456,7 +490,7 @@ Response 200:
 
   { "data": { "items": [ { "email": "mgr@example.com" } ], "count": 1, "scope": "all" } }
 
-**24. Managers by Project (Dipendente)**  
+**25. Managers by Project (Dipendente)**  
 Request:
 .. code-block:: json
 
@@ -466,8 +500,38 @@ Response 200 (visibilità own -> potrebbe essere vuoto o limitato):
 
   { "data": { "items": [], "count": 0, "scope": "own" } }
 
+**26. Suspended Tasks (Manager/Dipendente)**
+Request:
+.. code-block:: json
+
+  { "token": "<TOKEN>", "email_dipendente": "dip@example.com" }
+Response 200:
+.. code-block:: json
+
+  { "data": { "items": [ { "id": 30, "stato": "Sospeso", "nome": "Overdue Task", "data_fine": "2024-01-01" } ], "count": 1 } }
+
+**27. Completed Tasks (Manager/Dipendente)**
+Request:
+.. code-block:: json
+
+  { "token": "<TOKEN>", "email_dipendente": "dip@example.com" }
+Response 200:
+.. code-block:: json
+
+  { "data": { "items": [ { "id": 31, "stato": "Completato", "nome": "Done Task", "data_fine": "2025-01-10" } ], "count": 1 } }
+
+**28. In Progress Tasks (Manager/Dipendente)**
+Request:
+.. code-block:: json
+
+  { "token": "<TOKEN>", "email_dipendente": "dip@example.com" }
+Response 200:
+.. code-block:: json
+
+  { "data": { "items": [ { "id": 32, "stato": "InProgress", "nome": "Active Task", "data_fine": "2025-02-20" } ], "count": 1 } }
+
 ---
-**25. Push Register**  
+**29. Push Register**  
 Request:
 .. code-block:: json
 
@@ -477,7 +541,7 @@ Response 200:
 
   { "message": "Push token registrato" }
 
-**26. Push Unregister**  
+**30. Push Unregister**  
 Request:
 .. code-block:: json
 
@@ -487,7 +551,7 @@ Response 200:
 
   { "message": "Push token rimosso" }
 
-**27. (DEV) Debug Push Test**  
+**31. (DEV) Debug Push Test**  
 Nota: endpoint di sviluppo, non esporre in produzione.
 Request (una tra email o fcm_token):
 .. code-block:: json
