@@ -159,18 +159,27 @@ Errori: MISSING_PARAMS.
 Errori: AUTH_*, MISSING_PARAMS, DB_INTEGRITY_ERROR.
 
 ### 7.2 POST /api/update/Task (Manager)
-Minimo: `token`, `id`, `id_progetto`, `id_dipartimento` + almeno un campo aggiornabile (`stato`, `descrizione`, `data_inizio`, `data_fine`, `email_dipendente`, `email_manager`).
+Minimo: `token`, `id`, `id_dipartimento` + almeno un campo aggiornabile (`stato`, `descrizione`, `data_inizio`, `data_fine`, `email_dipendente`, `email_manager`).
 200: `{ "data": { "items": [ <tutte le task progetto> ], "count": N } }`
 Errori: MISSING_PARAMS, NOT_FOUND, AUTH_*.
 
 ### 7.3 POST /api/delete/Task (Manager)
 ```json
-{ "token":"<manager>", "id":7, "id_progetto":100, "id_dipartimento":1 }
+{ "token":"<manager>", "id":7, "id_dipartimento":1 }
 ```
 200: `{ "data": { "items": [...restanti...], "count": N }, "message":"Task eliminata" }`
 Errori: NOT_FOUND, MISSING_PARAMS, AUTH_*.
 
-### 7.4 POST /api/task/by-project (Manager o Dipendente)
+### 7.4 POST /api/update/Task/Status (Dipendente)
+Permette al dipendente assegnatario di aggiornare lo stato della task.
+Input:
+```json
+{ "token":"<dipendente>", "id":7, "stato":"Completed" }
+```
+200: `{ "data": { "id":7, "stato":"Completed", ... }, "message":"Success" }`
+Errori: AUTH_FORBIDDEN_ACCESS (se non assegnatario), NOT_FOUND, MISSING_PARAMS.
+
+### 7.5 POST /api/task/by-project (Manager o Dipendente)
 Manager: `{ "token":"<manager>", "id_progetto":100, "id_dipartimento":1 }`
 Dipendente: `{ "token":"<dipendente>", "id_progetto":100 }`
 200: `{ "data": { "items": [...], "count": N, "scope":"all|own" } }`
@@ -312,8 +321,9 @@ Output 200:
 |----------|--------|-------|------------------|------------------|
 | /api/update/Project | POST | Manager | id_progetto + id_dipartimento + ≥1 campo | MISSING_PARAMS se nessun campo |
 | /api/delete/Project | POST | Manager | id_progetto + id_dipartimento | NOT_FOUND se assente |
-| /api/update/Task | POST | Manager | id + id_progetto + id_dipartimento + ≥1 campo | MISSING_PARAMS / NOT_FOUND |
-| /api/delete/Task | POST | Manager | id + id_progetto + id_dipartimento | NOT_FOUND |
+| /api/update/Task | POST | Manager | id + id_dipartimento + ≥1 campo | MISSING_PARAMS / NOT_FOUND |
+| /api/delete/Task | POST | Manager | id + id_dipartimento | NOT_FOUND |
+| /api/update/Task/Status | POST | Dipendente | id + stato | AUTH_FORBIDDEN_ACCESS / NOT_FOUND |
 
 ## 11. Pattern di Output Ricorrenti
 | Caso | Struttura |
