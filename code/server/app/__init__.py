@@ -1,8 +1,21 @@
 from flask import Flask, send_from_directory, redirect
+from flask.json.provider import DefaultJSONProvider
+from datetime import date, datetime
+
+
+class _TaskyJSONProvider(DefaultJSONProvider):
+    def default(self, o):
+        if isinstance(o, (date, datetime)):
+            return o.strftime('%d/%m/%Y')
+        return super().default(o)
 
 def create_app():
     """Create and configure the Flask application."""
     app = Flask(__name__)
+
+    # Serialize all date/datetime values as dd/MM/yyyy
+    app.json_provider_class = _TaskyJSONProvider
+    app.json = app.json_provider_class(app)
 
     # Initialize centralized logging (must be first)
     from .logging_config import setup_logging

@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 def _fmt_date(val):
-    """Return val formatted as YYYY-MM-DD if it's a date/datetime, else unchanged."""
+    """Return val formatted as dd/MM/yyyy if it's a date/datetime, else unchanged."""
     if isinstance(val, (date, datetime)):
-        return val.strftime('%Y-%m-%d')
+        return val.strftime('%d/%m/%Y')
     return val
 
 def _format_items_dates(items, date_keys):
@@ -164,8 +164,8 @@ def insertTask(id_task, nome, stato, descrizione, data_inizio, data_fine, id_pro
     - nome (str): nome della task.
     - stato (str): stato (<=50 char).
     - descrizione (str): descrizione testuale.
-    - data_inizio (str YYYY-MM-DD)
-    - data_fine (str YYYY-MM-DD)
+    - data_inizio (str dd/MM/yyyy)
+    - data_fine (str dd/MM/yyyy)
     - id_progetto (int): FK a Progetto.id_progetto
     - dipendente_email (str|None): FK a Dipendente.email
     - manager_email (str|None): FK a Manager.email
@@ -869,11 +869,13 @@ def handle_login(data):
     sesso = None
     display_name = None
     nome_dipartimento = None
+    email_out = (data.get('email') or None)
     try:
         user_wrap = get_user_by_token(token)
         if user_wrap and user_wrap.get('user'):
             user = user_wrap['user']
             email = user.get('email', 'unknown')
+            email_out = user.get('email') or email_out
             dept_id = user.get('Dipartimento_id_dipartimento')
             sesso = user.get('sesso')
             nome = (user.get('nome') or '').strip()
@@ -900,6 +902,7 @@ def handle_login(data):
         pass
 
     return api_response({
+        "email": email_out,
         "token": token,
         "type": tipo,
         "id_dipartimento": dept_id,

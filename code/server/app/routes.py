@@ -493,7 +493,7 @@ def register():
     """Descrizione:
     Registra un nuovo Dipendente.
 
-    Input (JSON): email, password, nome, cognome, data_nascita (YYYY-MM-DD), Dipartimento_id_dipartimento (int)
+    Input (JSON): email, password, nome, cognome, data_nascita (dd/MM/yyyy), Dipartimento_id_dipartimento (int)
 
     Output:
     - 201 JSON { data: { token }, message }
@@ -517,7 +517,7 @@ def register_manager():
     """Descrizione:
     Registra un nuovo Manager.
 
-    Input (JSON): email, password, nome, cognome, data_nascita, anni_lavorativi, Dipartimento_id_dipartimento
+    Input (JSON): email, password, nome, cognome, data_nascita (dd/MM/yyyy), anni_lavorativi, Dipartimento_id_dipartimento
 
     Output:
     - 201 JSON { data: { token }, message }

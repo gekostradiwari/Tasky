@@ -2,7 +2,8 @@ from marshmallow import Schema, fields, validate, ValidationError
 
 # Common validators
 NonEmptyStr = fields.Str(required=True, validate=validate.Length(min=1))
-DateStr = fields.Date(required=True, format="%Y-%m-%d")
+DATE_FORMAT = "%d/%m/%Y"
+DateStr = fields.Date(required=True, format=DATE_FORMAT)
 
 class RegisterDipendenteSchema(Schema):
     email = fields.Email(required=True)
@@ -114,8 +115,8 @@ class ProjectUpdateSchema(Schema):
     descrizione = fields.Str(load_default=None)
     budget = fields.Decimal(load_default=None, as_string=True)
     nome = fields.Str(load_default=None)
-    data_inizio = fields.Date(load_default=None, format="%Y-%m-%d")
-    data_fine = fields.Date(load_default=None, format="%Y-%m-%d")
+    data_inizio = fields.Date(load_default=None, format=DATE_FORMAT)
+    data_fine = fields.Date(load_default=None, format=DATE_FORMAT)
     id_dipartimento = fields.Integer(load_default=None, strict=True)
 
 
@@ -133,8 +134,8 @@ class TaskUpdateSchema(Schema):
     nome = fields.Str(load_default=None)
     stato = fields.Str(load_default=None)
     descrizione = fields.Str(load_default=None)
-    data_inizio = fields.Date(load_default=None, format="%Y-%m-%d")
-    data_fine = fields.Date(load_default=None, format="%Y-%m-%d")
+    data_inizio = fields.Date(load_default=None, format=DATE_FORMAT)
+    data_fine = fields.Date(load_default=None, format=DATE_FORMAT)
     email_dipendente = fields.Email(load_default=None)
     email_manager = fields.Email(load_default=None)
 
