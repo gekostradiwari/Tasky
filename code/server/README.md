@@ -1,4 +1,5 @@
 # TaskyAPI
+
 API Flask per gestione di Dipendenti, Manager, Progetti e Task con controllo di visibilità basato sul ruolo.
 
 ## Indice
@@ -80,13 +81,137 @@ python api.py
 - Decorator principale per creazione risorse: `@manager_of_department('id_dipartimento')` (verifica token, ruolo e dipartimento coerente con l'utente Manager).
 - Per la visibilità progetti/task NON si usa il decorator: la logica di filtro è delegata a handler nel repository che determinano `scope`.
 
+### Password Hashing (bcrypt)
+L'applicazione usa **bcrypt** per l'hashing sicuro delle password:
+
+- ✅ **Salt automatico**: ogni password ha un salt unico generato automaticamente
+- ✅ **Resistenza brute-force**: algoritmo computazionalmente costoso (12 rounds)
+- ✅ **Standard industriale**: bcrypt è lo standard per password hashing dal 1999
+- ✅ **One-way**: impossibile recuperare la password originale dall'hash
+
+**Formato hash bcrypt**: `$2b$12$[salt][hash]` (60 caratteri)
+
+**Backward compatibility**: Durante la migrazione da SHA256, il sistema accetta entrambi i formati:
+- Nuove registrazioni → bcrypt automaticamente
+- Utenti esistenti → possono ancora autenticarsi con SHA256 legacy
+- Dopo password reset → bcrypt viene usato
+
+Per rimuovere il supporto SHA256 legacy, eliminare `verify_password_legacy()` da `app/utils.py`.
+
 ### Visibilità (scope)
 | Endpoint | Manager | Dipendente |
 |----------|---------|-----------|
 | `/api/project/by-department` | Tutti i progetti del suo dipartimento (`scope=all`) | Solo progetti dove ha almeno una task (`scope=own`) |
 | `/api/task/by-project` | Tutte le task del progetto (richiede anche `id_dipartimento`) (`scope=all`) | Solo le proprie task su quel progetto (`scope=own`) |
 
-## 5. Schema Risposte & Errori
+## 5. Gestione Concorrenza e Scheduler
+
+### Threading Parallelo
+- Il server WSGI (Gunicorn/uWSGI in produzione) gestisce richieste HTTP in parallelo
+- Ogni richiesta viene processata in un thread/processo separato
+- Supporta centinaia di richieste concorrenti
+
+### Sincronizzazione ACID + Locking
+- **Transazioni esplicite**: operazioni multi-step utilizzano `BEGIN/COMMIT/ROLLBACK` per garantire atomicità
+- **Row-level locking**: `SELECT ... FOR UPDATE` su operazioni critiche per prevenire lost updates
+  - `updateTask()`: lock esplicito prima di modificare task
+  - `updateProject()`: lock esplicito prima di modificare progetti (es. budget)
+- **DBMS MySQL**: gestisce lock automatici e proprietà ACID
+
+### Scheduler Time-Triggered (APScheduler)
+- **Controllo scadenze automatico**: job giornaliero alle 00:00 che sospende task scaduti
+- **Logica**: se `data_fine < oggi` AND `stato NOT IN ('Sospeso', 'Completato')` → imposta `stato = 'Sospeso'`
+- **Esecuzione asincrona**: non blocca richieste HTTP, gira in background thread
+- **Debug endpoint**: `/api/debug/scheduler/check-overdue` (POST, Manager) per test manuale
+
+Questa architettura implementa il modello di controllo RAD 5.1 (Request/Response + Time-Triggered) e 5.2 (Concurrency Management).
+
+## 5.1. Sistema di Logging
+
+### Architettura Logging
+- **Formato JSON strutturato**: tutti i log sono in formato JSON machine-parseable per analisi automatica
+- **Rotazione automatica**: file di log ruotano automaticamente quando raggiungono dimensioni limite
+- **Redazione dati sensibili**: password, token, FCM token automaticamente oscurati nei log
+
+### File di Log
+Tutti i file sono salvati in `logs/` e montati come volume Docker:
+
+| File | Contenuto | Rotazione | Livelli |
+|------|-----------|-----------|---------|
+| `app.log` | Tutti i log dell'applicazione | 10MB, 5 backup | ALL |
+| `error.log` | Solo errori critici | 10MB, 5 backup | ERROR+ |
+| `scheduler.log` | Log scheduler APScheduler | 5MB, 3 backup | ALL (modulo scheduler) |
+
+### Pattern Redatti
+I seguenti pattern vengono automaticamente oscurati nei log:
+- `password=...` → `password=[REDACTED]`
+- `token=...` → `token=[REDACTED]`
+- `fcm_token=...` → `fcm_token=[REDACTED]`
+- `Bearer <token>` → `Bearer [REDACTED]`
+- `"password": "..."` → `"password": "[REDACTED]"`
+- `"token": "..."` → `"token": "[REDACTED]"`
+- `"fcm_token": "..."` → `"fcm_token": "[REDACTED]"`
+
+### Livelli di Log
+- **DEBUG**: Query SQL, dettagli operazioni DB
+- **INFO**: Operazioni normali (login, creazione task/progetti, richieste HTTP)
+- **WARNING**: Autenticazione fallita, risorse non trovate
+- **ERROR**: Errori DB, eccezioni catch, fallimenti operazioni critiche
+
+### Visualizzazione Log
+
+#### Metodo 1: Docker Compose Logs
+```powershell
+# Tutti i log del container API
+docker-compose logs -f api
+
+# Ultimi 100 log
+docker-compose logs --tail=100 api
+```
+
+#### Metodo 2: File System (se volume montato)
+```powershell
+# Visualizza log applicazione
+Get-Content logs/app.log -Tail 50
+
+# Visualizza solo errori
+Get-Content logs/error.log -Tail 20
+
+# Monitoraggio real-time
+Get-Content logs/app.log -Wait
+```
+
+#### Metodo 3: Debug Endpoint (richiede token Manager)
+```powershell
+# Recupera ultimi 100 log applicazione
+curl -X GET "http://localhost:5001/api/debug/logs?file=app&lines=100" \
+  -H "Authorization: Bearer <MANAGER_TOKEN>"
+
+# Filtra solo errori
+curl -X GET "http://localhost:5001/api/debug/logs?file=error&level=ERROR" \
+  -H "Authorization: Bearer <MANAGER_TOKEN>"
+
+# Log scheduler
+curl -X GET "http://localhost:5001/api/debug/logs?file=scheduler&lines=50" \
+  -H "Authorization: Bearer <MANAGER_TOKEN>"
+```
+
+Parametri query disponibili:
+- `file`: `app`, `error`, `scheduler` (default: `app`)
+- `lines`: numero di righe recenti (default: 100)
+- `level`: filtro per livello (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+
+### Configurazione LOG_LEVEL
+Imposta variabile ambiente `LOG_LEVEL` per controllare verbosity:
+```powershell
+# Nel docker-compose.yml
+environment:
+  LOG_LEVEL: INFO  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+```
+
+Default: `INFO` (raccomandato per produzione)
+
+## 6. Schema Risposte & Errori
 Successo:
 ```json
 {
@@ -149,7 +274,7 @@ Modalità alternative:
 2. `{ "email": "...", "password": "..." }`
 Successo 200:
 ```json
-{ "message": "Login effettuato", "data": { "token": "...", "type": "Manager", "id_dipartimento": 1, "sesso": "M" } }
+{ "message": "Login effettuato", "data": { "token": "...", "type": "Manager", "email": "mgr@example.com" } }
 ```
 
 ### Creazione Progetto
@@ -305,6 +430,4 @@ Il passaggio previsto è permettere opzionalmente l'invio del token anche via he
 `Authorization: Bearer <token>` mantenendo per un periodo il body `{"token":"..."}` per retrocompatibilità.
 
 ---
-Ultimo aggiornamento: 2025-10-08
-
-
+Ultimo aggiornamento: 08/10/2025
