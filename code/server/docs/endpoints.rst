@@ -183,7 +183,7 @@ Esempi JSON
 
 Linee guida:
 * I token sono mostrati come placeholder (`<TOKEN_MANAGER>`, `<TOKEN_DIPENDENTE>`).
-* Le date sono nel formato `YYYY-MM-DD`.
+* Le date sono nel formato `dd/MM/yyyy`.
 * Il budget è restituito come stringa con due decimali.
 * Gli esempi mostrano solo i campi principali (possono essercene altri nelle tabelle del DB o output più esteso in futuro).
 
@@ -197,7 +197,7 @@ Request:
     "password": "Secret123",
     "nome": "Luca",
     "cognome": "Bianchi",
-    "data_nascita": "1995-04-20",
+    "data_nascita": "20/04/1995",
     "Dipartimento_id_dipartimento": 1
   }
 Response 201:
@@ -214,7 +214,7 @@ Request:
     "password": "Secret123",
     "nome": "Marco",
     "cognome": "Verdi",
-    "data_nascita": "1988-02-10",
+    "data_nascita": "10/02/1988",
     "anni_lavorativi": 5,
     "Dipartimento_id_dipartimento": 1
   }
@@ -231,7 +231,7 @@ Request:
 Response 200:
 .. code-block:: json
 
-  { "message": "Login effettuato", "data": { "token": "<TOKEN_MANAGER>", "type": "Manager", "id_dipartimento": 1, "sesso": "M" } }
+  { "message": "Login effettuato", "data": { "token": "<TOKEN_MANAGER>", "type": "Manager", "email": "mgr@example.com", "id_dipartimento": 1, "sesso": "M" } }
 
 **4. Login (con token)**  
 Request:
@@ -241,7 +241,7 @@ Request:
 Response 200 (stessa struttura):
 .. code-block:: json
 
-  { "message": "Login effettuato", "data": { "token": "<TOKEN_MANAGER>", "type": "Manager", "id_dipartimento": 1, "sesso": "M" } }
+  { "message": "Login effettuato", "data": { "token": "<TOKEN_MANAGER>", "type": "Manager", "email": "mgr@example.com", "id_dipartimento": 1, "sesso": "M" } }
 
 **5. Creazione Dipartimento**  
 Request:
@@ -278,7 +278,7 @@ Response 200:
 
   {
     "data": {
-     "items": [ { "email": "dip@example.com", "nome": "Luca", "cognome": "Bianchi", "data_nascita": "1995-04-20" } ],
+     "items": [ { "email": "dip@example.com", "nome": "Luca", "cognome": "Bianchi", "data_nascita": "20/04/1995" } ],
      "count": 1
     }
   }
@@ -294,7 +294,7 @@ Response 200 (campi aggiuntivi, esempio):
       "email": "dip@example.com",
       "nome": "Luca",
       "cognome": "Bianchi",
-      "data_nascita": "1995-04-20",
+      "data_nascita": "20/04/1995",
       "Dipartimento_id_dipartimento": 1
      }],
      "count": 1
@@ -310,8 +310,8 @@ Request:
     "descrizione": "Onboarding piattaforma",
     "budget": 15000.5,
     "nome": "Onboarding",
-    "data_inizio": "2025-01-15",
-    "data_fine": "2025-06-30",
+    "data_inizio": "15/01/2025",
+    "data_fine": "30/06/2025",
     "id_dipartimento": 1
   }
 Response 201:
@@ -333,8 +333,8 @@ Response 200:
      "nome": "Onboarding",
      "descrizione": "Aggiornata",
      "budgetIstanziato": "15000.50",
-     "dataInizio": "2025-01-15",
-     "dataFine": "2025-06-30",
+     "dataInizio": "15/01/2025",
+     "dataFine": "30/06/2025",
      "Dipartimento_id_dipartimento": 1
     }
   }
@@ -408,8 +408,8 @@ Request:
     "nome": "Setup ambiente",
     "stato": "Open",
     "descrizione": "Configurazione iniziale ambiente di sviluppo",
-    "data_inizio": "2025-02-01",
-    "data_fine": "2025-02-15",
+    "data_inizio": "01/02/2025",
+    "data_fine": "15/02/2025",
     "id_progetto": 101,
     "id_dipartimento": 1,
     "email_dipendente": "dip@example.com",
@@ -508,7 +508,7 @@ Request:
 Response 200:
 .. code-block:: json
 
-  { "data": { "items": [ { "id": 30, "stato": "Sospeso", "nome": "Overdue Task", "data_fine": "2024-01-01" } ], "count": 1 } }
+  { "data": { "items": [ { "id": 30, "stato": "Sospeso", "nome": "Overdue Task", "data_fine": "01/01/2024" } ], "count": 1 } }
 
 **27. Completed Tasks (Manager/Dipendente)**
 Request:
@@ -518,7 +518,7 @@ Request:
 Response 200:
 .. code-block:: json
 
-  { "data": { "items": [ { "id": 31, "stato": "Completato", "nome": "Done Task", "data_fine": "2025-01-10" } ], "count": 1 } }
+  { "data": { "items": [ { "id": 31, "stato": "Completato", "nome": "Done Task", "data_fine": "10/01/2025" } ], "count": 1 } }
 
 **28. In Progress Tasks (Manager/Dipendente)**
 Request:
@@ -528,7 +528,7 @@ Request:
 Response 200:
 .. code-block:: json
 
-  { "data": { "items": [ { "id": 32, "stato": "InProgress", "nome": "Active Task", "data_fine": "2025-02-20" } ], "count": 1 } }
+  { "data": { "items": [ { "id": 32, "stato": "InProgress", "nome": "Active Task", "data_fine": "20/02/2025" } ], "count": 1 } }
 
 ---
 **29. Push Register**  
