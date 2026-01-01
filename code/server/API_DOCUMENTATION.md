@@ -6,7 +6,7 @@ Documento di riferimento definitivo per tutte le rotte disponibili, con requisit
 ## 1. Convenzioni Generali
 * Base path: `/api`
 * Content-Type richiesto: `application/json`
-* Date dominio (progetti / task): `YYYY-MM-DD`
+* Date dominio (progetti / task): `dd/MM/yyyy`
 * Budget in risposta: stringa con due decimali (es: `"10000.50"`)
 * Autenticazione attuale: token nel body `{ "token": "..." }` (Roadmap: header `Authorization: Bearer <token>`)
 * Risposta di successo generica:
@@ -50,7 +50,7 @@ Documento di riferimento definitivo per tutte le rotte disponibili, con requisit
 Registra un dipendente. I campi `sesso` e `numero_telefono` sono OBBLIGATORI.
 Richiesta:
 ```json
-{ "email":"user@example.com", "password":"pwd", "nome":"Mario", "cognome":"Rossi", "data_nascita":"1990-01-01", "sesso":"M", "numero_telefono":"+39 333 1234567", "Dipartimento_id_dipartimento":1 }
+{ "email":"user@example.com", "password":"pwd", "nome":"Mario", "cognome":"Rossi", "data_nascita":"01/01/1990", "sesso":"M", "numero_telefono":"+39 333 1234567", "Dipartimento_id_dipartimento":1 }
 ```
 Risposta 201:
 ```json
@@ -66,7 +66,7 @@ Errori: come sopra + MISSING_PARAMS se campo aggiuntivo mancante.
 Varianti input: `{ "token":"..." }` oppure `{ "email":"...", "password":"..." }`.
 Risposta 200:
 ```json
-{ "message":"Login effettuato", "data": { "token":"<token>", "type":"Manager|Dipendente" } }
+{ "message":"Login effettuato", "data": { "token":"<token>", "type":"Manager|Dipendente", "email":"user@example.com" } }
 ```
 Errori: MISSING_CREDENTIALS, INVALID_CREDENTIALS, AUTH_TOKEN_INVALID.
 
@@ -102,7 +102,7 @@ Come sopra ma con attributi estesi (es. anni_lavorativi se Manager ecc.).
 ## 6. Progetti
 ### 6.1 POST /api/add/Project (Manager)
 ```json
-{ "token":"<manager>", "descrizione":"Descr.", "budget":10000.5, "nome":"Alpha", "data_inizio":"2025-01-01", "data_fine":"2025-12-31", "id_dipartimento":1, "id_progetto":100 }
+{ "token":"<manager>", "descrizione":"Descr.", "budget":10000.5, "nome":"Alpha", "data_inizio":"01/01/2025", "data_fine":"31/12/2025", "id_dipartimento":1, "id_progetto":100 }
 ```
 201: `{ "data": { "id_progetto":100 }, "message":"Progetto inserito correttamente" }`
 Errori: AUTH_TOKEN_MISSING, AUTH_FORBIDDEN_ROLE, AUTH_FORBIDDEN_DEPARTMENT, MISSING_PARAMS, DUPLICATE_PROJECT, DB_INTEGRITY_ERROR.
@@ -115,7 +115,7 @@ Esempio:
 ```
 200 (shape indicativo):
 ```json
-{ "data": { "id_progetto":100, "nome":"Nuovo", "descrizione":"Agg.", "budgetIstanziato":"10000.50", "dataInizio":"2025-01-01", "dataFine":"2025-12-31", "Dipartimento_id_dipartimento":1 } }
+{ "data": { "id_progetto":100, "nome":"Nuovo", "descrizione":"Agg.", "budgetIstanziato":"10000.50", "dataInizio":"01/01/2025", "dataFine":"31/12/2025", "Dipartimento_id_dipartimento":1 } }
 ```
 Errori: MISSING_PARAMS (nessun campo da aggiornare), NOT_FOUND, AUTH_*.
 
@@ -131,7 +131,7 @@ Manager: `{ "token":"<manager>", "id_dipartimento":1 }`
 Dipendente: `{ "token":"<dipendente>", "id_dipartimento":1 }`
 200:
 ```json
-{ "data": { "items": [ { "id_progetto":100, "nome":"Alpha", "budgetIstanziato":"10000.50", "dataInizio":"2025-01-01", "dataFine":"2025-12-31" } ], "count":1, "scope":"all|own" } }
+{ "data": { "items": [ { "id_progetto":100, "nome":"Alpha", "budgetIstanziato":"10000.50", "dataInizio":"01/01/2025", "dataFine":"31/12/2025" } ], "count":1, "scope":"all|own" } }
 ```
 Errori: MISSING_PARAMS, AUTH_TOKEN_INVALID, AUTH_FORBIDDEN_DEPARTMENT (solo manager), AUTH_TOKEN_MISSING.
 
@@ -153,7 +153,7 @@ Errori: MISSING_PARAMS.
 ## 7. Task
 ### 7.1 POST /api/add/Task (Manager)
 ```json
-{ "token":"<manager>", "stato":"Open", "descrizione":"Task", "data_inizio":"2025-03-01", "data_fine":"2025-03-31", "id_progetto":100, "id_dipartimento":1, "email_dipendente":"dip@example.com", "email_manager":"mgr@example.com" }
+{ "token":"<manager>", "stato":"Open", "descrizione":"Task", "data_inizio":"01/03/2025", "data_fine":"31/03/2025", "id_progetto":100, "id_dipartimento":1, "email_dipendente":"dip@example.com", "email_manager":"mgr@example.com" }
 ```
 201: `{ "data": { "id_task": 7 }, "message":"Task inserita correttamente" }`
 Errori: AUTH_*, MISSING_PARAMS, DB_INTEGRITY_ERROR.
@@ -306,8 +306,8 @@ Output 200:
         "nome": "Progetto Alpha",
         "descrizione": "...",
         "budget": "10000.00",
-        "dataInizio": "2024-01-01",
-        "dataFine": "2024-12-31",
+        "dataInizio": "01/01/2024",
+        "dataFine": "31/12/2024",
         "Dipartimento_id_dipartimento": 1
       }
     ],
@@ -372,10 +372,10 @@ Output 200:
 
 ## 13. Roadmap
 * Supporto Authorization Bearer token (retrocompatibilità temporanea body `token`)
-* Uniformare `data_nascita` a `YYYY-MM-DD`
+* Uniformare `data_nascita` a `dd/MM/yyyy`
 * Versioning `/api/v2` per breaking changes
 * Test unitari e CI pipeline
 * Scheduler configurabile (intervallo personalizzabile)
 
 ---
-Ultimo aggiornamento: 2025-11-25
+Ultimo aggiornamento: 25/11/2025
