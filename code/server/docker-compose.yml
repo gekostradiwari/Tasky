@@ -7,7 +7,7 @@ services:
       - db_data:/var/lib/mysql
       - ./database.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
-      - "3306:3306"
+      - "3304:3306"
 
   api:
     build: .

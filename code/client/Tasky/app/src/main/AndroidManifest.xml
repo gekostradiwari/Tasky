@@ -17,13 +17,29 @@
             android:exported="false"
             android:label="@string/title_activity_login" />
         <activity
+            android:name=".ui.screens.DepartmentActivity"
+            android:exported="false"
+            android:label="DepartmentActivity" />
+        <activity
+            android:name=".ui.screens.ListViewer"
+            android:exported="false"
+            android:label="DepartmentActivity" />
+        <activity
+            android:name=".ui.screens.InfoViewer"
+            android:exported="false"
+            android:label="DepartmentActivity" />
+        <activity
             android:name=".ui.screens.HomeDipendenteActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="HomeDipendenteActivity" />
         <activity
             android:name=".ui.screens.HomeManagerActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="HomeManagerActivity" />
+        <activity
+            android:name=".ui.screens.Adder"
+            android:exported="false"
+            android:label="Adder" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

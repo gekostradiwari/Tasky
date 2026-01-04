@@ -1,15 +1,20 @@
 package com.android.tasky.utility
 
+import com.squareup.moshi.Moshi
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 
 object RetrofitInstance {
+    private val moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
     val baseUrl = "http://192.168.1.27:5001/api/" //Impostare l'url del server dove sono hostate le API
     val loggingInterceptor = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
     val client = OkHttpClient.Builder().addInterceptor(loggingInterceptor).build()
-    fun getRetrofitInstance(): Retrofit {
-        return Retrofit.Builder().baseUrl(baseUrl).client(client).addConverterFactory(MoshiConverterFactory.create()).build()
+    val api: RetrofitInterface by lazy{
+        Retrofit.Builder().baseUrl(baseUrl).client(client).addConverterFactory(MoshiConverterFactory.create(moshi)).build().create(RetrofitInterface::class.java)
     }
 }

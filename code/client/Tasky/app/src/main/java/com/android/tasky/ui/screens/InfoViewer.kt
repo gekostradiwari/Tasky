@@ -1,13 +1,16 @@
 package com.android.tasky.ui.screens
 
+import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.absolutePadding
@@ -19,19 +22,29 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
@@ -40,6 +53,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -49,27 +63,144 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
+import androidx.lifecycle.lifecycleScope
 import com.android.tasky.R
+import com.android.tasky.dto.Progetto
+import com.android.tasky.dto.Task
 import com.android.tasky.ui.theme.computerSaysNo
+import com.android.tasky.utility.RetrofitInstance
+import com.android.tasky.utility.RetrofitInterface
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 
 class InfoViewer : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val jsonRicevuto = intent.getStringExtra("task")
+        val token = intent.getStringExtra("token")
+        val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+        val taskAdapter = moshi.adapter(Task::class.java)
+        var taskObj: Task? = if (jsonRicevuto != null) {
+            taskAdapter.fromJson(jsonRicevuto)
+        } else {
+            null
+        }
+        val jsonRicevutoProject = intent.getStringExtra("progetto")
+        val progettoAdapter = moshi.adapter(Progetto::class.java)
+        var progettoObj: Progetto? = if (jsonRicevutoProject != null) {
+            progettoAdapter.fromJson(jsonRicevutoProject)
+        } else {
+            null
+        }
+        val infoType = intent.getStringExtra("infoType")
+        val type = intent.getStringExtra("type")
+        val tipo = intent.getStringExtra("tipo")
+        setContent {
+            val context = LocalContext.current
+            var isLoading by remember { mutableStateOf(false) }
+            Scaffold(
+                topBar = {
+                    Row(
+                        modifier = Modifier.height(70.dp)
+                            .fillMaxWidth()
+                            .background(brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color("#D06FCA".toColorInt()),
+                                    Color("#A56FD9".toColorInt()),
+                                    Color("#866FE5".toColorInt()),
+                                    Color("#7B6FE9".toColorInt()),
+                                    Color("#A56FD9".toColorInt()),
+                                    Color("#D06FCA".toColorInt()),
+                                    Color("#A56FD9".toColorInt()),
+                                    Color("#7B6FE9".toColorInt())
+                                )
 
+                            )),
+                        horizontalArrangement = Arrangement.spacedBy(125.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { (context as? Activity)?.finish()}
+                        ) {
+                            Icon(Icons.Default.ArrowBack, "TurnBack")
+                        }
+                        Image(
+                            painter = painterResource(id = R.drawable.tasky_logo),
+                            contentDescription = "Logo Tasky",
+                            modifier = Modifier
+                                .size(48.dp)
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+                content = { paddingValues ->
+                    if(infoType.equals("task")){
+                        infoTask(taskObj!!, type!!, tipo!!, paddingValues, {isLoading = it}, token!!)
+                    }
+                    else if(infoType.equals("progetto")) {
+                        infoProgetto(progettoObj!!, paddingValues)
+                    }
+                    else{
+                        Text(text = "Errore")
+                    }
+                    if (isLoading) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = Color.Black.copy(alpha = 0.3f), // Grigio trasparente
+                            onClick = { /* Non fare nulla, serve a intercettare i click */ }
+                        ) {
+                            // Vuoto, serve solo per il colore
+                        }
+
+                        // Il cerchio sopra lo sfondo scuro
+                        CircularProgressIndicator(
+                            color = Color.Magenta, // Colore del cerchio
+                            strokeWidth = 4.dp
+                        )
+                    }
+                }
+            )
+        }
     }
 
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-@Preview
-fun infoTask(/*Qua bisogna passare la task di cui si vuole visualizzare le informazioni*/) {
+fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, token: String) {
+    var statoAttuale by remember { mutableStateOf(taskObj.stato) }
+    var isExpanded by remember { mutableStateOf(false) }
+    val api = RetrofitInstance.api
+    val handler = CoroutineExceptionHandler { _, exception ->
+        println("Caught $exception")
+    }
+    val scope = rememberCoroutineScope()
+    val gradientColors = if(statoAttuale.equals("Completato")){
+        listOf(
+            Color("#66D161".toColorInt()),
+            Color("#B2FFB7".toColorInt()),
+        )
+    } else if(statoAttuale.equals("InProgress")){
+        listOf(
+            Color("#FF07F0".toColorInt()),
+            Color("#D06FCA".toColorInt()),
+        )
+    }else{
+        listOf(
+            Color("#FF850A".toColorInt()),
+            Color("#FBAB76".toColorInt()),
+        )
+    }
     Column(
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxSize()
+            .padding(paddingValues)
     ) {
         Box(
             contentAlignment = Alignment.Center,
@@ -78,10 +209,7 @@ fun infoTask(/*Qua bisogna passare la task di cui si vuole visualizzare le infor
                 .height(92.dp)
                 .background(
                     brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            Color("#66D161".toColorInt()),
-                            Color("#B2FFB7".toColorInt()),
-                        ),
+                        colors = gradientColors,
                     ),
                     shape = RoundedCornerShape(34)
                 )
@@ -92,10 +220,7 @@ fun infoTask(/*Qua bisogna passare la task di cui si vuole visualizzare le infor
                 modifier = Modifier
                     .fillMaxSize()
             ) {
-                var statoTask =
-                    "Completato" // Quando si avrà la task mettere direttamente task.stato in mutableStateOf
-                var statoAttuale by remember { mutableStateOf(statoTask) }
-                var isExpanded by remember { mutableStateOf(false) }
+
                 Text(
                     "Stato:",
                     textAlign = TextAlign.End,
@@ -122,29 +247,131 @@ fun infoTask(/*Qua bisogna passare la task di cui si vuole visualizzare le infor
                             unfocusedBorderColor = Color.Transparent,
                             disabledBorderColor = Color.Transparent,
                         ),
-                        value = "Completato", //Qui ci va sempre Task.stato,
+                        value = statoAttuale, //Qui ci va sempre Task.stato,
                         readOnly = true,
                         onValueChange = {},
                         textStyle = TextStyle(
                             fontFamily = FontFamily.SansSerif,
                             fontWeight = FontWeight.W400,
                             fontSize = 20.sp,
-                        )
-                        //trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },
+                        ),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },
                     )
-                    /*ExposedDropdownMenu(
+                    ExposedDropdownMenu(
                         expanded = isExpanded,
                         onDismissRequest = { isExpanded = false },
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("Sospesa") },
-                            onClick = {
-                                statoAttuale = "Sospesa"
-                                //Impostare lo stato della task uguale a quello di stato attuale
-                                isExpanded = false
-                            },
-                        )
-                    }*/
+                        if(tipo.equals("dipendente") && taskObj.stato.equals("Completato") || taskObj.stato.equals("Sospeso")){
+
+                        }
+                        else if(tipo.equals("dipendente") && taskObj.stato.equals("InProgress")){
+                            DropdownMenuItem(
+                                text = { Text("Completato") },
+                                onClick = {
+                                    scope.launch(Dispatchers.IO + handler) {
+                                        try{
+                                            onLoadingChange(true)
+                                            val responseStatus = async{ api.updateTask(mapOf<String, Any>("token" to token, "id" to taskObj.id, "stato" to "Completato"))}
+                                            val response = responseStatus.await()
+                                            onLoadingChange(false)
+                                            if(response.isSuccessful){
+                                                statoAttuale = "Completato"
+                                                taskObj.stato = "Completato"
+                                                isExpanded = false
+                                                println("Stato Aggiornato con successo")
+                                            }
+                                        }catch (e: java.net.ConnectException) {
+                                            println("Impossibile contattare il server")
+                                        } catch (e: java.io.IOException) {
+                                            println("Problema di connessione")
+                                        } catch (e: Exception) {
+                                            println("Errore sconosciuto $e")
+                                        }
+                                    }
+                                },
+                            )
+                        }
+                        else{
+                            DropdownMenuItem(
+                                text = { Text("Completato") },
+                                onClick = {
+                                    scope.launch(Dispatchers.IO + handler) {
+                                        try{
+                                            onLoadingChange(true)
+                                            val responseStatus = async{ api.updateTaskMGR(mapOf<String,Any>("token" to token, "id" to taskObj.id, "nome" to taskObj.nome ,"stato" to "Completato", "descrizione" to taskObj.descrizione,
+                                                "data_inizio" to taskObj.data_inizio, "data_fine" to taskObj.data_fine, "email_dipendente" to taskObj.Dipendente_email, "email_manager" to taskObj.Manager_email))}
+                                            val response = responseStatus.await()
+                                            onLoadingChange(false)
+                                            if(response.isSuccessful){
+                                                statoAttuale = "Completato"
+                                                taskObj.stato = "Completato"
+                                                isExpanded = false
+                                                println("Stato Aggiornato con successo")
+                                            }
+                                        }catch (e: java.net.ConnectException) {
+                                            println("Impossibile contattare il server")
+                                        } catch (e: java.io.IOException) {
+                                            println("Problema di connessione")
+                                        } catch (e: Exception) {
+                                            println("Errore sconosciuto $e")
+                                        }
+                                    }
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("In corso") },
+                                onClick = {
+                                    scope.launch(Dispatchers.IO + handler) {
+                                        try{
+                                            onLoadingChange(true)
+                                            val responseStatus = async{ api.updateTaskMGR(mapOf<String,Any>("token" to token, "id" to taskObj.id, "nome" to taskObj.nome ,"stato" to "InProgress", "descrizione" to taskObj.descrizione,
+                                                "data_inizio" to taskObj.data_inizio, "data_fine" to taskObj.data_fine, "email_dipendente" to taskObj.Dipendente_email, "email_manager" to taskObj.Manager_email))}
+                                            val response = responseStatus.await()
+                                            onLoadingChange(false)
+                                            if(response.isSuccessful){
+                                                statoAttuale = "In corso"
+                                                taskObj.stato = "InProgress"
+                                                isExpanded = false
+                                                println("Stato Aggiornato con successo")
+                                            }
+                                        }catch (e: java.net.ConnectException) {
+                                            println("Impossibile contattare il server")
+                                        } catch (e: java.io.IOException) {
+                                            println("Problema di connessione")
+                                        } catch (e: Exception) {
+                                            println("Errore sconosciuto $e")
+                                        }
+                                    }
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Sospeso") },
+                                onClick = {
+                                    scope.launch(Dispatchers.IO + handler) {
+                                        try{
+                                            onLoadingChange(true)
+                                            val responseStatus = async{ api.updateTaskMGR(mapOf<String,Any>("token" to token, "id" to taskObj.id, "nome" to taskObj.nome ,"stato" to "Sospeso", "descrizione" to taskObj.descrizione,
+                                                "data_inizio" to taskObj.data_inizio, "data_fine" to taskObj.data_fine, "email_dipendente" to taskObj.Dipendente_email, "email_manager" to taskObj.Manager_email))}
+                                            val response = responseStatus.await()
+                                            onLoadingChange(false)
+                                            if(response.isSuccessful){
+                                                statoAttuale = "Sospeso"
+                                                taskObj.stato = "Sospeso"
+                                                isExpanded = false
+                                                println("Stato Aggiornato con successo")
+                                            }
+                                        }catch (e: java.net.ConnectException) {
+                                            println("Impossibile contattare il server")
+                                        } catch (e: java.io.IOException) {
+                                            println("Problema di connessione")
+                                        } catch (e: Exception) {
+                                            println("Errore sconosciuto $e")
+                                        }
+                                    }
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -161,10 +388,7 @@ fun infoTask(/*Qua bisogna passare la task di cui si vuole visualizzare le infor
                     .height(200.dp)
                     .background(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                Color("#66D161".toColorInt()),
-                                Color("#B2FFB7".toColorInt()),
-                            ),
+                            colors = gradientColors,
                         ),
                         shape = RoundedCornerShape(12)
                     ),
@@ -202,7 +426,7 @@ fun infoTask(/*Qua bisogna passare la task di cui si vuole visualizzare le infor
                         unfocusedBorderColor = Color.Transparent,
                         disabledBorderColor = Color.Transparent,
                     ),
-                    value = "Completato", //Qui ci va sempre Task.stato,
+                    value = taskObj.descrizione, //Qui ci va sempre Task.stato,
                     readOnly = true,
                     onValueChange = {},
                     textStyle = TextStyle(
@@ -228,10 +452,7 @@ fun infoTask(/*Qua bisogna passare la task di cui si vuole visualizzare le infor
                     .height(132.dp)
                     .background(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                Color("#66D161".toColorInt()),
-                                Color("#B2FFB7".toColorInt()),
-                            ),
+                            colors = gradientColors
                         ),
                         shape = RoundedCornerShape(34)
                     ),
@@ -275,7 +496,7 @@ fun infoTask(/*Qua bisogna passare la task di cui si vuole visualizzare le infor
                         unfocusedBorderColor = Color.Transparent,
                         disabledBorderColor = Color.Transparent,
                     ),
-                    value = "Data Inizio", //Qui ci va sempre Task.stato,
+                    value = "${taskObj.data_inizio}", //Qui ci va sempre Task.stato,
                     readOnly = true,
                     onValueChange = {},
                     textStyle = TextStyle(
@@ -305,10 +526,7 @@ fun infoTask(/*Qua bisogna passare la task di cui si vuole visualizzare le infor
                     .height(132.dp)
                     .background(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                Color("#66D161".toColorInt()),
-                                Color("#B2FFB7".toColorInt()),
-                            ),
+                            colors = gradientColors
                         ),
                         shape = RoundedCornerShape(34)
                     ),
@@ -316,7 +534,7 @@ fun infoTask(/*Qua bisogna passare la task di cui si vuole visualizzare le infor
 
                 ) {
                 Text(
-                    "Data Inizio:",
+                    "Data Fine:",
                     textAlign = TextAlign.Start,
                     fontFamily = computerSaysNo,
                     fontWeight = FontWeight.W400,
@@ -352,7 +570,7 @@ fun infoTask(/*Qua bisogna passare la task di cui si vuole visualizzare le infor
                         unfocusedBorderColor = Color.Transparent,
                         disabledBorderColor = Color.Transparent,
                     ),
-                    value = "Data Fine", //Qui ci va sempre Task.stato,
+                    value = "${taskObj.data_fine}", //Qui ci va sempre Task.stato,
                     readOnly = true,
                     onValueChange = {},
                     textStyle = TextStyle(
@@ -368,12 +586,13 @@ fun infoTask(/*Qua bisogna passare la task di cui si vuole visualizzare le infor
 }
 
 @Composable
-fun infoProgetto(/*Qui deve essere passato il progetto di cui si vogliono visualizzare le informazioni*/){
+fun infoProgetto(progetto: Progetto, paddingValues: PaddingValues){
     Column(
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxSize()
+            .padding(paddingValues)
     ){
         Box(
             contentAlignment = Alignment.Center,
@@ -390,7 +609,7 @@ fun infoProgetto(/*Qui deve essere passato il progetto di cui si vogliono visual
                     shape = RoundedCornerShape(34)
                 )
         ){
-            Text("Budget: 100€", //qui va inserito il budget che è stato istanziato per il progetto
+            Text("Budget: ${progetto.budgetIstanziato}€", //qui va inserito il budget che è stato istanziato per il progetto
                 textAlign = TextAlign.Center,
                 fontFamily = computerSaysNo,
                 fontWeight = FontWeight.W400,
@@ -459,7 +678,7 @@ fun infoProgetto(/*Qui deve essere passato il progetto di cui si vogliono visual
                             unfocusedBorderColor = Color.Transparent,
                             disabledBorderColor = Color.Transparent,
                         ),
-                        value = "Completato", //Qui ci va sempre Task.stato,
+                        value = progetto.descrizione, //Qui ci va sempre Task.stato,
                         readOnly = true,
                         onValueChange = {},
                         textStyle = TextStyle(
@@ -487,7 +706,7 @@ fun infoProgetto(/*Qui deve essere passato il progetto di cui si vogliono visual
                     shape = RoundedCornerShape(34)
                 )
         ){
-            Text("Nome: Revolution", //qui va inserito il nome del progetto
+            Text("Nome: ${progetto.nome}", //qui va inserito il nome del progetto
                 textAlign = TextAlign.Center,
                 fontFamily = computerSaysNo,
                 fontWeight = FontWeight.W400,
@@ -512,7 +731,7 @@ fun infoProgetto(/*Qui deve essere passato il progetto di cui si vogliono visual
                     shape = RoundedCornerShape(70)
                 )
         ){
-            Text("Data inizio: 10/10/10", //qui va inserito il nome del progetto
+            Text("Data inizio: ${progetto.dataInizio}", //qui va inserito il nome del progetto
                 textAlign = TextAlign.Center,
                 fontFamily = computerSaysNo,
                 fontWeight = FontWeight.W400,
@@ -537,7 +756,7 @@ fun infoProgetto(/*Qui deve essere passato il progetto di cui si vogliono visual
                     shape = RoundedCornerShape(70)
                 )
         ){
-            Text("Data fine: 10/10/10", //qui va inserito il nome del progetto
+            Text("Data fine: ${progetto.dataFine}", //qui va inserito il nome del progetto
                 textAlign = TextAlign.Center,
                 fontFamily = computerSaysNo,
                 fontWeight = FontWeight.W400,

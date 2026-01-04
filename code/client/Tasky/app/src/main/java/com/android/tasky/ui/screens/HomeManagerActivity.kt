@@ -1,6 +1,7 @@
 package com.android.tasky.ui.screens
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -47,18 +49,32 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.android.tasky.R
 import kotlinx.coroutines.launch
 import android.graphics.Color as AndroidColor
 import androidx.core.graphics.toColorInt
+import com.android.tasky.MainActivity
+import com.android.tasky.ui.theme.computerSaysNo
+import com.android.tasky.utility.SessionManager
 
 class HomeManagerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val intent = this.intent
+        val token = intent.getStringExtra("token")
+        val sesso = intent.getStringExtra("sesso")
+        val id_dipartimento = intent.getIntExtra("id_dipartimento",0)
+        val nome_dipartimento = intent.getStringExtra("nome_dipartimento")
+        val nome = intent.getStringExtra("nome")
+        val email = intent.getStringExtra("email")
+        val tipo = intent.getStringExtra("tipo")
+        val sessionManager = SessionManager.getInstance(applicationContext)
         setContent{
             val context = LocalContext.current
             var showDialog by remember { mutableStateOf(false) }
@@ -87,7 +103,7 @@ class HomeManagerActivity : ComponentActivity() {
                     }}
                 )
             }
-            HomeManagerActivityPreview()
+            HomeManagerActivityPreview(token, sesso, id_dipartimento, nome_dipartimento, nome, sessionManager, email)
             BackHandler {
                 showDialog = true
             }
@@ -97,10 +113,10 @@ class HomeManagerActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-@Preview
-fun HomeManagerActivityPreview() {
+fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int?, nome_dipartimento:String?, nome:String?, sessionManager:SessionManager, email:String?) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -115,7 +131,13 @@ fun HomeManagerActivityPreview() {
                     },
                     label = { Text("Log Out") },
                     selected = true,
-                    onClick = { scope.launch { /* Mandare l'utente sull'activity di logout*/ } }
+                    onClick = {
+                        sessionManager.clearAuthToken()
+                        val intent = Intent(context, MainActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        context.startActivity(intent)
+                        (context as? Activity)?.finish()
+                    }
                 )
             }
         }
@@ -146,7 +168,7 @@ fun HomeManagerActivityPreview() {
                         Icon(Icons.Default.Menu, "Menu")
                     }
                     Image(
-                        painter = painterResource(id = R.drawable.tasky_logo),
+                        painter = painterResource(id = R.drawable.taskyfinalnobackground),
                         contentDescription = "Logo Tasky",
                         modifier = Modifier
                             .size(48.dp)
@@ -162,44 +184,62 @@ fun HomeManagerActivityPreview() {
                         .padding(paddingValues)
                         .fillMaxSize()
                 ) {
-                    Text("Benvenuto")
+                    Text(
+                        "Benvenuto!",
+                        textAlign = TextAlign.Start,
+                        fontFamily = computerSaysNo,
+                        fontWeight = FontWeight.W400,
+                        fontSize = 40.sp,
+                        modifier = Modifier
+                            .width(160.dp)
+                            .padding(start = 18.dp, top = 10.dp),
+                    )
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .width(358.dp)
                             .height(92.dp)
-                            .background(Color.Magenta, shape = RoundedCornerShape(34))
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color("#FF07F0".toColorInt()),
+                                        Color("#D06FCA".toColorInt()).copy(alpha = 0.5f),
+                                    )
+                                ),
+                                shape = RoundedCornerShape(34)
+                            )
                     ) {
                         Row(
                             modifier = Modifier.fillMaxSize(),
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Nome Manager   ", textAlign = TextAlign.Center)
-                            Text("Qui va l'emoji")
-                        }
-                    }
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .width(358.dp)
-                            .height(100.dp)
-                            .background(Color.Cyan, shape = RoundedCornerShape(34))
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Text("Dipartimento", textAlign = TextAlign.Center)
-                            Text("Nome Dipartimento")
-                            Text("Qui va l'icona")
-                            IconButton(
-                                onClick = { /*TODO*/ },
+                            Text(
+                                "$nome",
+                                textAlign = TextAlign.Center,
+                                fontFamily = computerSaysNo,
+                                fontWeight = FontWeight.W400,
+                                fontSize = 40.sp,
+                                modifier = Modifier
+                                    .width(265.dp),
+                            )
+                            if(sesso.equals("M")){
+                                Image(
+                                    painter = painterResource(id = R.drawable.man_in_tuxedo_light_skin_tone_svgrepo_com),
+                                    contentDescription = "Manager M",
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                )
 
+                            }
+                            else{
+                                Image(
+                                    painter = painterResource(id = R.drawable.woman_in_tuxedo_light_skin_tone_svgrepo_com),
+                                    contentDescription = "Manager F",
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                )
 
-                            ) {
-                                Icon(Icons.Default.ArrowForward,"Vai")
                             }
                         }
                     }
@@ -207,67 +247,300 @@ fun HomeManagerActivityPreview() {
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .width(358.dp)
-                            .height(100.dp)
-                            .background(Color.Green, shape = RoundedCornerShape(34))
+                            .height(160.dp)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color("#7B6FE9".toColorInt()).copy(alpha = 0.2f),
+                                        Color("#866FE5".toColorInt()),
+                                    )
+                                ),
+                                shape = RoundedCornerShape(34)
+                            )
                     ) {
                         Column(
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Spacer(Modifier.height(30.dp))
+                            Spacer(Modifier.padding(top = 30.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ){
+                                Column(
+                                    verticalArrangement = Arrangement.Center,
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                ) {
+
+                                    Text("Dipartimento",
+                                        textAlign = TextAlign.Center,
+                                        fontFamily = computerSaysNo,
+                                        fontWeight = FontWeight.W400,
+                                        fontSize = 40.sp,
+                                        modifier = Modifier
+                                            .width(170.dp)
+                                            )
+                                    Text("$nome_dipartimento",
+                                        textAlign = TextAlign.Center,
+                                        fontFamily = computerSaysNo,
+                                        fontWeight = FontWeight.W400,
+                                        fontSize = 40.sp,
+                                        modifier = Modifier
+                                            .width(270.dp)
+                                            )
+
+                                }
+                                Image(
+                                    painter = painterResource(id = R.drawable.office_building_svgrepo_com),
+                                    contentDescription = "Department",
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                )
+
+                            }
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.height(50.dp)
+                            ){
+                                Spacer(Modifier.padding(start = 270.dp))
+                                IconButton(
+                                    onClick = {
+                                        val departmentIntent = Intent(context, DepartmentActivity::class.java)
+                                        departmentIntent.putExtra("token", token)
+                                        departmentIntent.putExtra("email", email)
+                                        departmentIntent.putExtra("id_dipartimento", id_dipartimento)
+                                        departmentIntent.putExtra("nome_dipartimento", nome_dipartimento)
+                                        context.startActivity(departmentIntent)
+
+                                    },
+                                    ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.next_arrow_forward_svgrepo_com),
+                                        contentDescription = "ArrowForward",
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                    )
+                                }
+
+                            }
+
+                        }
+                    }
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .width(358.dp)
+                            .height(120.dp)
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color("#97C65C".toColorInt()),
+                                        Color("#96FF13".toColorInt()).copy(alpha = 0.5f),
+                                    )
+                                ),
+                                shape = RoundedCornerShape(34)
+                            )
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ){
+                            Spacer(Modifier.padding(start = 65.dp))
+                            Text("Aggiungi Progetto",
+                                textAlign = TextAlign.Center,
+                                fontFamily = computerSaysNo,
+                                fontWeight = FontWeight.W400,
+                                fontSize = 40.sp,
+                                modifier = Modifier
+                                    .width(130.dp)
+                            )
+                            Image(
+                                painter = painterResource(id = R.drawable.triangular_ruler_svgrepo_com),
+                                contentDescription = "Add progetto",
+                                modifier = Modifier
+                                    .size(48.dp)
+                            )
+                            Spacer(Modifier.padding(end = 30.dp))
+
+                            Column(
+                                modifier = Modifier.fillMaxHeight(),
+                                horizontalAlignment = Alignment.End,
+                                verticalArrangement = Arrangement.Bottom
+                            ){
+                                IconButton(
+                                    onClick = { /*TODO*/ },
+
+
+                                    ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.next_arrow_forward_svgrepo_com),
+                                        contentDescription = "ArrowForward",
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                    )
+                                }
+                                Spacer(Modifier.padding(top = 10.dp))
+
+                            }
+
+                        }
+                        /*Column(
+
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Spacer(Modifier.padding(top = 10.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ){
-                                Text("Aggiungi progetto")
-                                Text("Qui va l'icona")
+                                Text("Aggiungi Progetto",
+                                    textAlign = TextAlign.Center,
+                                    fontFamily = computerSaysNo,
+                                    fontWeight = FontWeight.W400,
+                                    fontSize = 40.sp,
+                                    modifier = Modifier
+                                        .width(130.dp)
+                                )
+                                Image(
+                                    painter = painterResource(id = R.drawable.triangular_ruler_svgrepo_com),
+                                    contentDescription = "Add progetto",
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                )
                             }
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.Bottom
                             ){
-                                IconButton(onClick = { /*TODO*/ }) {
-                                    Icon(Icons.Default.ArrowForward,"Vai")
+                                IconButton(
+                                    onClick = { /*TODO*/ },
+
+
+                                    ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.next_arrow_forward_svgrepo_com),
+                                        contentDescription = "ArrowForward",
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                    )
                                 }
+                                Spacer(Modifier.padding(end = 18.dp))
                             }
-                        }
+                        }*/
                     }
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .width(358.dp)
                             .height(100.dp)
-                            .background(Color.Green, shape = RoundedCornerShape(34))
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color("#A56FD9".toColorInt()),
+                                        Color("#D06FCA".toColorInt()).copy(alpha = 0.5f),
+                                    )
+                                ),
+                                shape = RoundedCornerShape(34)
+                            )
                     ) {
-                        Column(
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ){
+                            Spacer(Modifier.padding(start = 65.dp))
+                            Text("Progetti",
+                                textAlign = TextAlign.Center,
+                                fontFamily = computerSaysNo,
+                                fontWeight = FontWeight.W400,
+                                fontSize = 40.sp,
+                                modifier = Modifier
+                                    .width(130.dp)
+                            )
+                            Image(
+                                painter = painterResource(id = R.drawable.briefcase_svgrepo_com),
+                                contentDescription = "List progetto",
+                                modifier = Modifier
+                                    .size(48.dp)
+                            )
+                            Spacer(Modifier.padding(end = 30.dp))
+
+                            Column(
+                                modifier = Modifier.fillMaxHeight(),
+                                horizontalAlignment = Alignment.End,
+                                verticalArrangement = Arrangement.Bottom
+                            ){
+                                IconButton(
+                                    onClick = { /*TODO*/ },
+
+
+                                    ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.next_arrow_forward_svgrepo_com),
+                                        contentDescription = "ArrowForward",
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                    )
+                                }
+                                Spacer(Modifier.padding(top = 7.dp))
+
+                            }
+
+                        }
+                        /*Column(
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Spacer(Modifier.height(30.dp))
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.width(180.dp),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ){
-                                Text("Progetti")
-                                Text("Qui va l'icona")
+                                Text("Progetti",
+                                    textAlign = TextAlign.Center,
+                                    fontFamily = computerSaysNo,
+                                    fontWeight = FontWeight.W400,
+                                    fontSize = 40.sp,
+                                    modifier = Modifier
+                                        .width(130.dp)
+                                )
+                                Image(
+                                    painter = painterResource(id = R.drawable.briefcase_svgrepo_com),
+                                    contentDescription = "List progetto",
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                )
                             }
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.Bottom
                             ){
-                                IconButton(onClick = { /*TODO*/ }) {
-                                    Icon(Icons.Default.ArrowForward,"Vai")
+                                IconButton(
+                                    onClick = { /*TODO*/ },
+
+
+                                    ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.next_arrow_forward_svgrepo_com),
+                                        contentDescription = "ArrowForward",
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                    )
                                 }
+                                Spacer(Modifier.padding(end = 15.dp))
                             }
-                        }
+                        }*/
                     }
-                    Spacer(Modifier.width(10.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center,
@@ -278,24 +551,61 @@ fun HomeManagerActivityPreview() {
                             modifier = Modifier
                                 .width(160.dp)
                                 .height(161.dp)
-                                .background(Color.Blue, shape = RoundedCornerShape(34))
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color("#66D161".toColorInt()),
+                                            Color("#B2FFB7".toColorInt()),
+                                        )
+                                    ),
+                                    shape = RoundedCornerShape(34)
+                                )
                         ){
                             Column (
                                 modifier = Modifier.fillMaxSize(),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ){
-                                Text("Aggiungi")
-                                Text("Task")
-                                Text("Qui va l'icona")
+                                Text("Aggiungi task",
+                                    textAlign = TextAlign.Center,
+                                    fontFamily = computerSaysNo,
+                                    fontWeight = FontWeight.W400,
+                                    fontSize = 40.sp,
+                                    modifier = Modifier
+                                        .width(130.dp)
+                                )
+                                Image(
+                                    painter = painterResource(id = R.drawable.puzzle_piece_svgrepo_com),
+                                    contentDescription = "Puzzle",
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                )
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.End,
                                     verticalAlignment = Alignment.Bottom
                                 ){
-                                    IconButton(onClick = { /*TODO*/ }) {
-                                        Icon(Icons.Default.ArrowForward,"Vai")
+                                    IconButton(
+                                        onClick = {
+                                            val listProgettiIntent = Intent(context, ListViewer::class.java)
+                                            listProgettiIntent.putExtra("token", token)
+                                            listProgettiIntent.putExtra("dipartimento", id_dipartimento)
+                                            listProgettiIntent.putExtra("email", email)
+                                            listProgettiIntent.putExtra("type", "progetti")
+                                            listProgettiIntent.putExtra("tipo", "manager")
+                                            listProgettiIntent.putExtra("adding",true)
+                                            context.startActivity(listProgettiIntent)
+                                        },
+
+                                        ) {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.next_arrow_forward_svgrepo_com),
+                                            contentDescription = "ArrowForward",
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                        )
                                     }
+                                    Spacer(Modifier.padding(end = 10.dp))
                                 }
                             }
                         }
@@ -305,24 +615,53 @@ fun HomeManagerActivityPreview() {
                             modifier = Modifier
                                 .width(160.dp)
                                 .height(161.dp)
-                                .background(Color.Red, shape = RoundedCornerShape(34))
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color("#FF850A".toColorInt()),
+                                            Color("#FBAB76".toColorInt()),
+                                        )
+                                    ),
+                                    shape = RoundedCornerShape(34)
+                                )
                         ){
                             Column (
                                 modifier = Modifier.fillMaxSize(),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ){
-                                Text("Sospendi")
-                                Text("Task")
-                                Text("Qui va l'icona")
+                                Text("Sospendi task",
+                                    textAlign = TextAlign.Center,
+                                    fontFamily = computerSaysNo,
+                                    fontWeight = FontWeight.W400,
+                                    fontSize = 40.sp,
+                                    modifier = Modifier
+                                        .width(130.dp)
+                                )
+                                Image(
+                                    painter = painterResource(id = R.drawable.exclamation_question_mark_svgrepo_com),
+                                    contentDescription = "task suspend",
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                )
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.End,
                                     verticalAlignment = Alignment.Bottom
                                 ){
-                                    IconButton(onClick = { /*TODO*/ }) {
-                                        Icon(Icons.Default.ArrowForward,"Vai")
+                                    IconButton(
+                                        onClick = { /*TODO*/ },
+
+
+                                        ) {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.next_arrow_forward_svgrepo_com),
+                                            contentDescription = "ArrowForward",
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                        )
                                     }
+                                    Spacer(Modifier.padding(end = 10.dp))
                                 }
                             }
                         }

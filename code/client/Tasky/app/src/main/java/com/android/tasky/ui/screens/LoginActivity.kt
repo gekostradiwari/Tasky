@@ -1,17 +1,29 @@
 package com.android.tasky.ui.screens
 
+import android.app.Activity
+import android.app.Activity.RESULT_OK
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -21,11 +33,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.lifecycleScope
+import com.android.tasky.R
+import com.android.tasky.ui.theme.computerSaysNo
 import com.android.tasky.utility.RetrofitInstance
 import com.android.tasky.utility.RetrofitInterface
 import com.android.tasky.utility.SessionManager
@@ -33,6 +56,7 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class LoginActivity : ComponentActivity() {
@@ -44,8 +68,10 @@ class LoginActivity : ComponentActivity() {
         var password: String? = null;
         var sesso: String? = null;
         var id_dipartimento: Int? = null;
+        var nome_dipartimento: String? = null;
+        var nome: String? = null;
         var tokenDecrypted = sessionManager.getAuthToken()
-        val api = RetrofitInstance.getRetrofitInstance().create(RetrofitInterface::class.java)
+        val api = RetrofitInstance.api
         val handler = CoroutineExceptionHandler { _, exception ->
             println("Caught $exception")
         }
@@ -53,19 +79,23 @@ class LoginActivity : ComponentActivity() {
             lifecycleScope.launch(Dispatchers.IO + handler) {
                 try {
                     val responseStatus = async { api.login(mapOf("token" to tokenDecrypted)) }
-                    println("Start loading")
                     val response = responseStatus.await()
-                    println("End loading")
                     if (response.isSuccessful) {
                         type = response.body()!!.data.type
                         sesso = response.body()!!.data.sesso
-                        id_dipartimento = response.body()!!.data.dipartimento
+                        id_dipartimento = response.body()!!.data.id_dipartimento
+                        nome_dipartimento = response.body()!!.data.nome_dipartimento
+                        nome = response.body()!!.data.name
+                        email = response.body()!!.data.email
                         println("1Mando l'utente alla homepage oppure ritorno il token attraverso intent")
                         val risultatoIntent = Intent()
                         risultatoIntent.putExtra("type", type)
                         risultatoIntent.putExtra("token", tokenDecrypted)
                         risultatoIntent.putExtra("sesso", sesso)
                         risultatoIntent.putExtra("id_dipartimento", id_dipartimento)
+                        risultatoIntent.putExtra("nome_dipartimento", nome_dipartimento)
+                        risultatoIntent.putExtra("nome", nome)
+                        risultatoIntent.putExtra("email", email)
                         setResult(RESULT_OK, risultatoIntent)
 
                         finish()
@@ -76,85 +106,229 @@ class LoginActivity : ComponentActivity() {
                 } catch (e: java.io.IOException) {
                     println("Problema di connessione")
                 } catch (e: Exception) {
-                    println("Errore sconosciuto")
+                    println("Errore sconosciuto1")
                 }
             }
         }
         setContent {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                Color("#D06FCA".toColorInt()),
-                                Color("#A56FD9".toColorInt()),
-                                Color("#866FE5".toColorInt()),
-                                Color("#7B6FE9".toColorInt()),
-                                Color("#A56FD9".toColorInt()),
-                                Color("#D06FCA".toColorInt()),
-                                Color("#A56FD9".toColorInt()),
-                                Color("#7B6FE9".toColorInt())
+            val context = LocalContext.current
+            var showDialog by remember { mutableStateOf(false) }
+            var isLoading by remember { mutableStateOf(false) }
+            if (showDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDialog = false },
+                    icon =
+                        {
+                            Image(
+                                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                                contentDescription = "Warning",
+                                modifier = Modifier.size(48.dp),
                             )
-
-                        )
-                    ),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                var tempEmail by remember { mutableStateOf("") }
-                var tempPassword by remember { mutableStateOf("") }
-                TextField(
-                    value = tempEmail,
-                    onValueChange = { it -> tempEmail = it },
-                    placeholder = { Text("Email") }
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                TextField(
-                    value = tempPassword,
-                    onValueChange = { it -> tempPassword = it },
-                    placeholder = { Text("Password") }
-                )
-                Button(onClick = {
-                    email = tempEmail
-                    password = tempPassword
-                    lifecycleScope.launch(Dispatchers.IO + handler) {
-                        try {
-                            val responseStatus =
-                                async { api.login(mapOf("email" to email, "password" to password)) }
-                            println("Start loading")
-                            val response = responseStatus.await()
-                            println("End loading")
-                            if (response.isSuccessful) {
-                                sessionManager.clearAuthToken()
-                                sessionManager.saveAuthToken(response.body()!!.data.token)
-                                type = response.body()!!.data.type
-                                sesso = response.body()!!.data.sesso
-                                id_dipartimento = response.body()!!.data.dipartimento
-                                println("2Mando l'utente sulla pagina iniziale o intent a main activity")
-                                val risultatoIntent = Intent()
-                                risultatoIntent.putExtra("type", type)
-                                risultatoIntent.putExtra("token", tokenDecrypted)
-                                risultatoIntent.putExtra("sesso", sesso)
-                                risultatoIntent.putExtra("id_dipartimento", id_dipartimento)
-                                setResult(RESULT_OK, risultatoIntent)
-                                finish()
-                            } else {
-                                println("2Email o password errati")
-                            }
-                        } catch (e: java.net.ConnectException) {
-                            println("Impossibile contattare il server")
-                        } catch (e: java.io.IOException) {
-                            println("Problema di connessione")
-                        } catch (e: Exception) {
-                            println("Errore sconosciuto $e")
+                        },
+                    title = { Text("Uscire da Tasky?") },
+                    text = { Text("Sei sicuro di voler uscire da Tasky?") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                (context as? Activity)?.finishAffinity()
+                            },
+                        ) {
+                            Text("Conferma")
+                        }
+                    },
+                    dismissButton = {
+                        Button(
+                            onClick = { showDialog = false }
+                        ) {
+                            Text("Annulla", color = Color.Red)
                         }
                     }
+                )
+            }
+            BackHandler {
+                showDialog = true
+            }
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color("#D06FCA".toColorInt()),
+                                    Color("#A56FD9".toColorInt()),
+                                    Color("#866FE5".toColorInt()),
+                                    Color("#7B6FE9".toColorInt()),
+                                    Color("#A56FD9".toColorInt()),
+                                    Color("#D06FCA".toColorInt()),
+                                    Color("#A56FD9".toColorInt()),
+                                    Color("#7B6FE9".toColorInt())
+                                )
 
-                }) {
-                    Text(text = "Login")
+                            )
+                        ),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    var tempEmail by remember { mutableStateOf("") }
+                    var tempPassword by remember { mutableStateOf("") }
+                    Image(
+                        painter = painterResource(id = R.drawable.taskyfinalnobackground),
+                        contentDescription = "Logo Tasky",
+                        modifier = Modifier.size(180.dp)
+                    )
+
+                    Text(
+                        text = "Entra in App!",
+                        textAlign = TextAlign.Start,
+                        fontFamily = computerSaysNo,
+                        fontWeight = FontWeight.W500,
+                        fontSize = 40.sp,
+                        modifier = Modifier
+                            .width(200.dp)
+                            .padding(start = 18.dp, bottom = 50.dp),
+                        // --- INIZIO MODIFICA PER L'OMBRA ---
+                        style = TextStyle(
+                            shadow = Shadow(
+                                color = Color.Black.copy(alpha = 0.5f), // Colore dell'ombra (nero con trasparenza)
+                                offset = Offset(
+                                    x = 4f,
+                                    y = 4f
+                                ),     // Spostamento (x, y) dell'ombra rispetto al testo
+                                blurRadius = 8f                        // Quanto deve essere sfocata l'ombra
+                            )
+                        )
+                    )
+
+                    TextField(
+                        value = tempEmail,
+                        onValueChange = { it -> tempEmail = it },
+                        placeholder = { Text("Email") }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    TextField(
+                        value = tempPassword,
+                        onValueChange = { it -> tempPassword = it },
+                        placeholder = { Text("Password") }
+                    )
+                    Button(onClick = {
+                        email = tempEmail
+                        password = tempPassword
+                        lifecycleScope.launch(Dispatchers.IO + handler) {
+                            try {
+                                isLoading = true
+                                val responseStatus =
+                                    async {
+                                        api.login(
+                                            mapOf(
+                                                "email" to email,
+                                                "password" to password
+                                            )
+                                        )
+                                    }
+                                val response = responseStatus.await()
+                                isLoading = false
+                                if (response.isSuccessful) {
+                                    sessionManager.clearAuthToken()
+                                    sessionManager.saveAuthToken(response.body()!!.data.token)
+                                    type = response.body()!!.data.type
+                                    sesso = response.body()!!.data.sesso
+                                    id_dipartimento = response.body()!!.data.id_dipartimento
+                                    nome_dipartimento = response.body()!!.data.nome_dipartimento
+                                    nome = response.body()!!.data.name
+                                    println("2Mando l'utente sulla pagina iniziale o intent a main activity")
+                                    val risultatoIntent = Intent()
+                                    risultatoIntent.putExtra("type", type)
+                                    risultatoIntent.putExtra("token", response.body()!!.data.token)
+                                    risultatoIntent.putExtra("sesso", sesso)
+                                    risultatoIntent.putExtra("id_dipartimento", id_dipartimento)
+                                    risultatoIntent.putExtra("nome_dipartimento", nome_dipartimento)
+                                    risultatoIntent.putExtra("nome", nome)
+                                    risultatoIntent.putExtra("email", email)
+                                    setResult(RESULT_OK, risultatoIntent)
+                                    finish()
+                                } else {
+                                    println("2Email o password errati")
+                                }
+                            } catch (e: java.net.ConnectException) {
+                                println("Impossibile contattare il server")
+                            } catch (e: java.io.IOException) {
+                                println("Problema di connessione")
+                            } catch (e: Exception) {
+                                println("Errore sconosciuto2 $e")
+                            }
+                        }
+
+                    }) {
+                        Text(text = "Login")
+                    }
+                }
+                if (isLoading) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = Color.Black.copy(alpha = 0.3f), // Grigio trasparente
+                        onClick = { /* Non fare nulla, serve a intercettare i click */ }
+                    ) {
+                        // Vuoto, serve solo per il colore
+                    }
+
+                    // Il cerchio sopra lo sfondo scuro
+                    CircularProgressIndicator(
+                        color = Color.Magenta, // Colore del cerchio
+                        strokeWidth = 4.dp
+                    )
                 }
             }
+        }
+    }
+
+}
+
+
+@Composable
+@Preview
+fun LoginPreview() {
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color("#D06FCA".toColorInt()),
+                        Color("#A56FD9".toColorInt()),
+                        Color("#866FE5".toColorInt()),
+                        Color("#7B6FE9".toColorInt()),
+                        Color("#A56FD9".toColorInt()),
+                        Color("#D06FCA".toColorInt()),
+                        Color("#A56FD9".toColorInt()),
+                        Color("#7B6FE9".toColorInt())
+                    )
+
+                )
+            ),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        var tempEmail by remember { mutableStateOf("") }
+        var tempPassword by remember { mutableStateOf("") }
+        TextField(
+            value = tempEmail,
+            onValueChange = { it -> tempEmail = it },
+            placeholder = { Text("Email") }
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        TextField(
+            value = tempPassword,
+            onValueChange = { it -> tempPassword = it },
+            placeholder = { Text("Password") }
+        )
+        Button(onClick = {
+        }) {
+            Text(text = "Login")
         }
     }
 

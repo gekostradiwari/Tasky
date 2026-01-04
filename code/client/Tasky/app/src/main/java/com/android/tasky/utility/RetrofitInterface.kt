@@ -9,5 +9,42 @@ interface RetrofitInterface {
     @POST("login")
     suspend fun login(@Body body: Map<String, String?>): Response<LoginResponse>
 
+    @POST("tasks/in-progress")
+    suspend fun TaskLister(@Body body: Map<String, String?>): Response<ListTaskResponse>
+
+    @POST("tasks/completed")
+    suspend fun TaskListerCompleted(@Body body: Map<String, String?>): Response<ListTaskResponse>
+
+    @POST("tasks/suspended")
+    suspend fun TaskListerSuspended(@Body body: Map<String, String?>): Response<ListTaskResponse>
+
+    @POST("update/Task/Status")
+    suspend fun updateTask(@Body body: @JvmSuppressWildcards Map<String, Any>): Response<TaskResponse>
+
+    @POST("dipendenti/data/by-department")
+    suspend fun dipendentiByDepartment(@Body body: @JvmSuppressWildcards Map<String, Any>): Response<ListDipendentiResponse>
+
+    @POST("update/Task")
+    suspend fun updateTaskMGR(@Body body: @JvmSuppressWildcards Map<String, Any>): Response<ListTaskResponse>
+
+    @POST("project/by-department")
+    suspend fun getProjectByDepartment(@Body body: @JvmSuppressWildcards Map<String, Any>): Response<ListProjectByDepartmentResponse>
+
+    @POST("task/by-project")
+    suspend fun getTaskByProjectMGR(@Body body: @JvmSuppressWildcards Map<String, Any>): Response<ListTaskResponse>
+
+    @POST("delete/Task")
+    suspend fun deleteTask(@Body body: @JvmSuppressWildcards Map<String, Any>): Response<ListTaskResponse>
+
+    @POST("delete/Project")
+    suspend fun deleteProject(@Body body: @JvmSuppressWildcards Map<String, Any>): Response<DeleteProjectResponse>
+
+    @POST("add/Task")
+    suspend fun addTask(@Body body: @JvmSuppressWildcards Map<String, Any>): Response<TaskAddResponse>
+
+
+
+
+
 
 }
