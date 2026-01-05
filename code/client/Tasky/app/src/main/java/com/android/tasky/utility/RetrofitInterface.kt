@@ -42,6 +42,12 @@ interface RetrofitInterface {
     @POST("add/Task")
     suspend fun addTask(@Body body: @JvmSuppressWildcards Map<String, Any>): Response<TaskAddResponse>
 
+    @POST("add/Project")
+    suspend fun addProject(@Body body: @JvmSuppressWildcards Map<String, Any>): Response<ProjectAddResponse>
+
+    @POST("projects/by-manager")
+    suspend fun getProjectsByMGR(@Body body: Map<String, String>): Response<ListProjectByMGRResponse>
+
 
 
 

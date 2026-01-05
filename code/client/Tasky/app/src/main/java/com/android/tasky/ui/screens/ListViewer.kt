@@ -100,6 +100,7 @@ class ListViewer : ComponentActivity(){
             println("Caught $exception")
         }
         val adding = intent.getBooleanExtra("adding", false)
+        val is_suspend = intent.getBooleanExtra("suspend", false)
         setContent {
             var Tasks_Completate by remember { mutableStateOf<List<Task>>(emptyList()) }
             var Tasks_In_Corso by remember { mutableStateOf<List<Task>>(emptyList()) }
@@ -177,6 +178,16 @@ class ListViewer : ComponentActivity(){
                             }
 
                         }
+                        else if(type.equals("ProgettiByMGR")){
+                            val responseStatus = async{
+                                api.getProjectsByMGR(mapOf("email_manager" to email!!))
+                            }
+                            val response = responseStatus.await()
+                            isLoading = false
+                            if(response.isSuccessful){
+                                Progetti_List = response.body()!!.data.items
+                            }
+                        }
 
                     } catch (e: java.net.ConnectException) {
                         println("Impossibile contattare il server")
@@ -235,7 +246,7 @@ class ListViewer : ComponentActivity(){
                     ) {
                         if(type.equals("task_in_corso")){
                             items(Tasks_In_Corso){elemento ->
-                                TaskInCorso(elemento, tipo, token, { })
+                                TaskInCorso(elemento, tipo, token, { }, is_suspend)
                             }
 
                         }
@@ -275,7 +286,56 @@ class ListViewer : ComponentActivity(){
                                             println("Errore sconosciuto $e")
                                         }
                                     }
-                                }, adding)
+                                }, adding, is_suspend)
+                            }
+                        }
+                        else if(type.equals("ProgettiByMGR")) {
+                            items(Progetti_List) { elemento ->
+                                ProgettoElement(elemento, email, type, token, tipo, dipartimento, {
+                                    lifecycleScope.launch(Dispatchers.IO + handler){
+                                        try{
+                                            isLoading = true
+                                            val responseStatus = async{ api.deleteProject(mapOf<String, Any>("token" to token!!, "id_progetto" to elemento.id_progetto, "id_dipartimento" to dipartimento))}
+                                            val response = responseStatus.await()
+                                            isLoading = false
+                                            if(response.isSuccessful){
+                                                Progetti_List = Progetti_List - elemento
+                                            }
+                                        } catch (e: java.net.ConnectException) {
+                                            println("Impossibile contattare il server")
+                                        } catch (e: java.io.IOException) {
+                                            println("Problema di connessione")
+                                        } catch (e: Exception) {
+                                            println("Errore sconosciuto $e")
+                                        }
+                                    }
+                                }, adding, is_suspend)
+                            }
+                        }
+                        else if(type.equals("task_by_project") && is_suspend){
+                            items(Task_list_By_project){
+                                elemento ->
+                                if(elemento.stato.equals("InProgress")){
+                                    TaskInCorso(elemento, tipo, token, {
+                                        lifecycleScope.launch(Dispatchers.IO + handler){
+                                            try{
+                                                isLoading = true
+                                                val responseStatus = async{ api.deleteTask(mapOf<String, Any>("token" to token!!, "id" to elemento.id, "id_dipartimento" to dipartimento))}
+                                                val response = responseStatus.await()
+                                                isLoading = false
+                                                if(response.isSuccessful){
+                                                    Task_list_By_project = Task_list_By_project - elemento
+                                                }
+                                            } catch (e: java.net.ConnectException) {
+                                                println("Impossibile contattare il server")
+                                            } catch (e: java.io.IOException) {
+                                                println("Problema di connessione")
+                                            } catch (e: Exception) {
+                                                println("Errore sconosciuto $e")
+                                            }
+                                        }
+                                    }, is_suspend)
+                                }
                             }
                         }
                         else if(type.equals("task_by_project")){
@@ -299,7 +359,7 @@ class ListViewer : ComponentActivity(){
                                                 println("Errore sconosciuto $e")
                                             }
                                         }
-                                    })
+                                    },is_suspend)
                                 }
                                 else if(elemento.stato.equals("Completato")){
                                     TaskCompletata(elemento, tipo, token, {
@@ -460,7 +520,7 @@ fun TaskCompletata(task: Task, tipo: String?, token: String?, onDeleteRequest: (
 
 
 @Composable
-fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: () -> Unit){
+fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: () -> Unit, isSuspend: Boolean){
     val context = LocalContext.current
     var isExpanded by remember { mutableStateOf(false) }
     Box(
@@ -511,6 +571,18 @@ fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: () -
                         taskInfoIntent.putExtra("infoType", "task")
                         taskInfoIntent.putExtra("token", token)
                         context.startActivity(taskInfoIntent)
+                    }
+                    else if(isSuspend){
+                        val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+                            .adapter(Task::class.java)
+                        val gson = moshi.toJson(task)
+                        val taskSuspendIntent = Intent(context, TaskSospender::class.java)
+                        taskSuspendIntent.putExtra("task", gson)
+                        taskSuspendIntent.putExtra("type", "task_in_corso")
+                        taskSuspendIntent.putExtra("tipo", tipo)
+                        taskSuspendIntent.putExtra("infoType", "task")
+                        taskSuspendIntent.putExtra("token", token)
+                        context.startActivity(taskSuspendIntent)
                     }
                     else{
                         isExpanded = true
@@ -645,7 +717,7 @@ fun TaskSospesa(task: Task, tipo: String?, token: String?, onDeleteRequest: () -
 }
 
 @Composable
-fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: String?, tipo: String?, dipartimento: Int?, onDeleteRequest: () -> Unit, adding: Boolean){
+fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: String?, tipo: String?, dipartimento: Int?, onDeleteRequest: () -> Unit, adding: Boolean, is_suspend: Boolean){
     var isExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
     Box(
@@ -689,6 +761,17 @@ fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: St
                         context.startActivity(addTaskIntent)
 
                     }
+                    else if(is_suspend){
+                        val projectInfoIntent = Intent(context, ListViewer::class.java)
+                        projectInfoIntent.putExtra("email", email)
+                        projectInfoIntent.putExtra("type", "task_by_project")
+                        projectInfoIntent.putExtra("token", token)
+                        projectInfoIntent.putExtra("tipo", tipo)
+                        projectInfoIntent.putExtra("progetto_id", progetto.id_progetto)
+                        projectInfoIntent.putExtra("dipartimento", dipartimento)
+                        projectInfoIntent.putExtra("suspend",true)
+                        context.startActivity(projectInfoIntent)
+                    }
                     else {
                         isExpanded = true
                     }
@@ -699,12 +782,30 @@ fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: St
             DropdownMenu(
                 expanded = isExpanded,
                 onDismissRequest = { isExpanded = false },
-            ){
+            ) {
+                if (type.equals("ProgettiByMGR") && progetto.Dipartimento_id_dipartimento != dipartimento) {
+                    DropdownMenuItem(
+                        text = { Text("Info") },
+                        onClick = {
+                            isExpanded = false
+                            val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+                                .adapter(Progetto::class.java)
+                            val gson = moshi.toJson(progetto)
+                            val projectInfoIntent = Intent(context, InfoViewer::class.java)
+                            projectInfoIntent.putExtra("progetto", gson)
+                            projectInfoIntent.putExtra("infoType", "progetto")
+                            context.startActivity(projectInfoIntent)
+                        }
+                    )
+
+                }
+                else{
                 DropdownMenuItem(
                     text = { Text("Info") },
                     onClick = {
                         isExpanded = false
-                        val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build().adapter(Progetto::class.java)
+                        val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+                            .adapter(Progetto::class.java)
                         val gson = moshi.toJson(progetto)
                         val projectInfoIntent = Intent(context, InfoViewer::class.java)
                         projectInfoIntent.putExtra("progetto", gson)
@@ -733,6 +834,7 @@ fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: St
                         isExpanded = false
                     }
                 )
+            }
             }
         }
     }

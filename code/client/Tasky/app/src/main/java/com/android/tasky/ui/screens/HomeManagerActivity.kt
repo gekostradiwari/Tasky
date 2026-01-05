@@ -372,7 +372,13 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                                 verticalArrangement = Arrangement.Bottom
                             ){
                                 IconButton(
-                                    onClick = { /*TODO*/ },
+                                    onClick = {
+                                        val addProjectIntent = Intent(context, Adder::class.java)
+                                        addProjectIntent.putExtra("type", "projectAdder")
+                                        addProjectIntent.putExtra("token", token)
+                                        addProjectIntent.putExtra("id_dipartimento", id_dipartimento)
+                                        context.startActivity(addProjectIntent)
+                                    },
 
 
                                     ) {
@@ -479,7 +485,15 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                                 verticalArrangement = Arrangement.Bottom
                             ){
                                 IconButton(
-                                    onClick = { /*TODO*/ },
+                                    onClick = {
+                                        val listProgettiByMGRIntent = Intent(context, ListViewer::class.java)
+                                        listProgettiByMGRIntent.putExtra("token", token)
+                                        listProgettiByMGRIntent.putExtra("dipartimento", id_dipartimento)
+                                        listProgettiByMGRIntent.putExtra("email", email)
+                                        listProgettiByMGRIntent.putExtra("type", "ProgettiByMGR")
+                                        listProgettiByMGRIntent.putExtra("tipo", "manager")
+                                        context.startActivity(listProgettiByMGRIntent)
+                                    },
 
 
                                     ) {
@@ -650,7 +664,16 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                                     verticalAlignment = Alignment.Bottom
                                 ){
                                     IconButton(
-                                        onClick = { /*TODO*/ },
+                                        onClick = {
+                                            val listProgettiIntent = Intent(context, ListViewer::class.java)
+                                            listProgettiIntent.putExtra("token", token)
+                                            listProgettiIntent.putExtra("dipartimento", id_dipartimento)
+                                            listProgettiIntent.putExtra("email", email)
+                                            listProgettiIntent.putExtra("type", "progetti")
+                                            listProgettiIntent.putExtra("tipo", "manager")
+                                            listProgettiIntent.putExtra("suspend",true)
+                                            context.startActivity(listProgettiIntent)
+                                        },
 
 
                                         ) {

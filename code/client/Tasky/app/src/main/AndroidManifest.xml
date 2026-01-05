@@ -41,6 +41,10 @@
             android:exported="false"
             android:label="Adder" />
         <activity
+            android:name=".ui.screens.TaskSospender"
+            android:exported="false"
+            android:label="TaskSospender" />
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
