@@ -1,6 +1,7 @@
 package com.android.tasky.ui.screens
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.CircularProgressIndicator
@@ -37,6 +39,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -81,6 +84,7 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -111,6 +115,11 @@ class TaskSospender : ComponentActivity(){
         setContent{
             val context = LocalContext.current
             var isLoading by remember { mutableStateOf(false) }
+            var showConnErrorDialog by remember { mutableStateOf(false) }
+            var isConfirmedDialog by remember {mutableStateOf(false)}
+            var isCompletedDialog by remember {mutableStateOf(false)}
+            var isConfirmed by remember {mutableStateOf(false)}
+            var isCompleted by remember {mutableStateOf(false)}
             Scaffold(
                 topBar = {
                     Row(
@@ -137,29 +146,85 @@ class TaskSospender : ComponentActivity(){
                             Icon(Icons.Default.ArrowBack, "TurnBack")
                         }
                         Image(
-                            painter = painterResource(id = R.drawable.tasky_logo),
+                            painter = painterResource(id = R.drawable.taskyfinalnobackground),
                             contentDescription = "Logo Tasky",
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(74.dp)
                         )
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
                 content = { paddingValues ->
-                    TaskSospenderPreview(taskObj!!, type!!, tipo!!, paddingValues, {isLoading = it}, token!!)
+                    TaskSospenderPreview(taskObj!!, type!!, tipo!!, paddingValues, {isLoading = it}, token!!,{showConnErrorDialog = it}, {isCompletedDialog = it})
                     if (isLoading) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = Color.Black.copy(alpha = 0.3f), // Grigio trasparente
-                            onClick = { /* Non fare nulla, serve a intercettare i click */ }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize() // Occupa tutto lo schermo
+                                .background(Color.Black.copy(alpha = 0.4f)) // Sfondo scuro e semitrasparente
+                                .clickable(enabled = false, onClick = {})
+                                .padding(paddingValues), // Blocca i click sullo sfondo
+                            contentAlignment = Alignment.Center // 2. Centra TUTTO il suo contenuto
                         ) {
-                            // Vuoto, serve solo per il colore
+                            // 3. Il CircularProgressIndicator ora verrà centrato da questo Box
+                            CircularProgressIndicator(
+                                color = Color.Magenta,
+                                strokeWidth = 5.dp // Aumentato leggermente per maggiore visibilità
+                            )
                         }
-
-                        // Il cerchio sopra lo sfondo scuro
-                        CircularProgressIndicator(
-                            color = Color.Magenta, // Colore del cerchio
-                            strokeWidth = 4.dp
+                    }
+                    if (showConnErrorDialog) {
+                        AlertDialog(
+                            onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+                            icon = { Image(
+                                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                                contentDescription = "Warning",
+                                modifier = Modifier.size(48.dp),
+                            ) },
+                            title = { Text("Problema di connessione") },
+                            text = { Text("Problema di connessione si prega di attendere e riprovare.") },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        // Chiudi il dialog e permetti all'utente di riprovare
+                                        showConnErrorDialog = false
+                                    }
+                                ) {
+                                    Text("Riprova")
+                                }
+                            },
+                            containerColor = Color.White,
+                            iconContentColor = MaterialTheme.colorScheme.error,
+                            titleContentColor = Color.Black
+                        )
+                    }
+                    if (isCompletedDialog) {
+                        AlertDialog(
+                            onDismissRequest = { isCompletedDialog = false },
+                            icon = { Image(
+                                painter = painterResource(id = R.drawable.check_mark_button_svgrepo_com),
+                                contentDescription = "Warning",
+                                modifier = Modifier.size(48.dp),
+                            ) },
+                            title = { Text("Success!") },
+                            text = { Text("L'operazione è avvenuta con successo!") },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        // Chiudi il dialog e permetti all'utente di riprovare
+                                        isCompleted = true
+                                        isCompletedDialog = false
+                                        val intent = Intent(this, HomeManagerActivity::class.java)
+                                        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                        startActivity(intent)
+                                        finish()
+                                    }
+                                ) {
+                                    Text("OK")
+                                }
+                            },
+                            containerColor = Color.White,
+                            iconContentColor = MaterialTheme.colorScheme.error,
+                            titleContentColor = Color.Black
                         )
                     }
                 }
@@ -171,13 +236,80 @@ class TaskSospender : ComponentActivity(){
 }
 
 @Composable
-fun TaskSospenderPreview(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, token: String){
+fun TaskSospenderPreview(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, token: String, onErrorConn: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit){
     val api = RetrofitInstance.api
     val handler = CoroutineExceptionHandler { _, exception ->
         println("Caught $exception")
     }
     val scope = rememberCoroutineScope()
     var testoDescrizione by remember { mutableStateOf("") }
+    var isDescrizioneValid by remember { mutableStateOf(true) }
+    var showConfirmationDialog by remember { mutableStateOf(false) }
+
+    if (showConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+            icon = { Image(
+                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                contentDescription = "Warning",
+                modifier = Modifier.size(48.dp),
+            ) },
+            title = { Text("Attenzione") },
+            text = { Text("Desideri davvero proseguire con la sospensione del seguente task?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmationDialog = false
+                        scope.launch(Dispatchers.IO + handler) {
+                            try{
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(true)
+                                }
+                                val responseStatus = async{ api.updateTaskMGR(mapOf<String,Any>("token" to token, "id" to taskObj.id, "nome" to taskObj.nome ,"stato" to "Sospeso", "descrizione" to testoDescrizione,
+                                    "data_inizio" to taskObj.data_inizio, "data_fine" to taskObj.data_fine, "email_dipendente" to taskObj.Dipendente_email, "email_manager" to taskObj.Manager_email))}
+                                val response = responseStatus.await()
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(false)
+                                }
+                                if(response.isSuccessful){
+                                    withContext(Dispatchers.Main) {
+                                        taskObj.stato = "Sospeso"
+                                        isCompletedDialog(true)
+                                    }
+                                }
+                            }catch (e: java.net.ConnectException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorConn(true)
+                                }
+                            } catch (e: java.io.IOException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorConn(true)
+                                }
+                            } catch (e: Exception) {
+                                println("Errore sconosciuto $e")
+                            }
+                        }
+                    }
+                ) {
+                    Text("Conferma")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        // Chiudi il dialog e pulisci i campi
+                        showConfirmationDialog = false
+                    }
+                ) {
+                    Text("Annulla", color = Color.Red)
+                }
+            },
+            containerColor = Color.White,
+            iconContentColor = MaterialTheme.colorScheme.error,
+            titleContentColor = Color.Black
+        )
+    }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top,
@@ -246,8 +378,10 @@ fun TaskSospenderPreview(taskObj: Task, type:String, tipo:String, paddingValues:
                         value = testoDescrizione, //Qui ci va sempre Task.stato,
                         onValueChange = { newText ->
                             testoDescrizione = newText
+                            isDescrizioneValid = newText.length <= 500
                         },
-                        placeholder = { Text("Inserisci una motivazione...") },
+                        isError = !isDescrizioneValid,
+                        placeholder = { Text("Max 500 caratteri...") },
                         textStyle = TextStyle(
                             fontFamily = FontFamily.SansSerif,
                             fontWeight = FontWeight.W400,
@@ -261,25 +395,7 @@ fun TaskSospenderPreview(taskObj: Task, type:String, tipo:String, paddingValues:
         Spacer(Modifier.padding(top = 40.dp))
         Button(
             onClick = {
-                scope.launch(Dispatchers.IO + handler) {
-                    try{
-                        onLoadingChange(true)
-                        val responseStatus = async{ api.updateTaskMGR(mapOf<String,Any>("token" to token, "id" to taskObj.id, "nome" to taskObj.nome ,"stato" to "Sospeso", "descrizione" to testoDescrizione,
-                            "data_inizio" to taskObj.data_inizio, "data_fine" to taskObj.data_fine, "email_dipendente" to taskObj.Dipendente_email, "email_manager" to taskObj.Manager_email))}
-                        val response = responseStatus.await()
-                        onLoadingChange(false)
-                        if(response.isSuccessful){
-                            taskObj.stato = "Sospeso"
-                            println("Stato Aggiornato con successo")
-                        }
-                    }catch (e: java.net.ConnectException) {
-                        println("Impossibile contattare il server")
-                    } catch (e: java.io.IOException) {
-                        println("Problema di connessione")
-                    } catch (e: Exception) {
-                        println("Errore sconosciuto $e")
-                    }
-                }
+                showConfirmationDialog = true
             },
             colors = ButtonColors(
                 containerColor = Color("#FF0A0A".toColorInt()),

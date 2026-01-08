@@ -1,12 +1,14 @@
 package com.android.tasky.ui.screens
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +29,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,6 +38,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -76,6 +81,7 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class InfoViewer : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -103,6 +109,11 @@ class InfoViewer : ComponentActivity() {
         setContent {
             val context = LocalContext.current
             var isLoading by remember { mutableStateOf(false) }
+            var showConnErrorDialog by remember { mutableStateOf(false) }
+            var isConfirmedDialog by remember {mutableStateOf(false)}
+            var isCompletedDialog by remember {mutableStateOf(false)}
+            var isConfirmed by remember {mutableStateOf(false)}
+            var isCompleted by remember {mutableStateOf(false)}
             Scaffold(
                 topBar = {
                     Row(
@@ -129,37 +140,137 @@ class InfoViewer : ComponentActivity() {
                             Icon(Icons.Default.ArrowBack, "TurnBack")
                         }
                         Image(
-                            painter = painterResource(id = R.drawable.tasky_logo),
+                            painter = painterResource(id = R.drawable.taskyfinalnobackground),
                             contentDescription = "Logo Tasky",
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(74.dp)
                         )
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
                 content = { paddingValues ->
                     if(infoType.equals("task")){
-                        infoTask(taskObj!!, type!!, tipo!!, paddingValues, {isLoading = it}, token!!)
+                        infoTask(taskObj!!, type!!, tipo!!, paddingValues, {isLoading = it}, token!!, {showConnErrorDialog = it}, {isCompletedDialog = it}, {isConfirmedDialog = it}, isConfirmed, isCompleted)
                     }
                     else if(infoType.equals("progetto")) {
-                        infoProgetto(progettoObj!!, paddingValues)
+                        infoProgetto(progettoObj!!, paddingValues, {showConnErrorDialog = it})
                     }
                     else{
                         Text(text = "Errore")
                     }
                     if (isLoading) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = Color.Black.copy(alpha = 0.3f), // Grigio trasparente
-                            onClick = { /* Non fare nulla, serve a intercettare i click */ }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize() // Occupa tutto lo schermo
+                                .background(Color.Black.copy(alpha = 0.4f)) // Sfondo scuro e semitrasparente
+                                .clickable(enabled = false, onClick = {})
+                                .padding(paddingValues), // Blocca i click sullo sfondo
+                            contentAlignment = Alignment.Center // 2. Centra TUTTO il suo contenuto
                         ) {
-                            // Vuoto, serve solo per il colore
+                            // 3. Il CircularProgressIndicator ora verrà centrato da questo Box
+                            CircularProgressIndicator(
+                                color = Color.Magenta,
+                                strokeWidth = 5.dp // Aumentato leggermente per maggiore visibilità
+                            )
                         }
-
-                        // Il cerchio sopra lo sfondo scuro
-                        CircularProgressIndicator(
-                            color = Color.Magenta, // Colore del cerchio
-                            strokeWidth = 4.dp
+                    }
+                    if (showConnErrorDialog) {
+                        AlertDialog(
+                            onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+                            icon = { Image(
+                                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                                contentDescription = "Warning",
+                                modifier = Modifier.size(48.dp),
+                            ) },
+                            title = { Text("Problema di connessione") },
+                            text = { Text("Problema di connessione si prega di attendere e riprovare.") },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        // Chiudi il dialog e permetti all'utente di riprovare
+                                        showConnErrorDialog = false
+                                    }
+                                ) {
+                                    Text("Riprova")
+                                }
+                            },
+                            containerColor = Color.White,
+                            iconContentColor = MaterialTheme.colorScheme.error,
+                            titleContentColor = Color.Black
+                        )
+                    }
+                    if (isConfirmedDialog) {
+                        AlertDialog(
+                            onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+                            icon = { Image(
+                                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                                contentDescription = "Warning",
+                                modifier = Modifier.size(48.dp),
+                            ) },
+                            title = { Text("Attenzione") },
+                            text = { Text("Desideri davvero proseguire con il cambio di stato del seguente task?") },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        // Chiudi il dialog e permetti all'utente di riprovare
+                                        isConfirmed = true
+                                        isConfirmedDialog = false
+                                    }
+                                ) {
+                                    Text("Conferma")
+                                }
+                            },
+                            dismissButton = {
+                                Button(
+                                    onClick = {
+                                        // Chiudi il dialog e pulisci i campi
+                                        isConfirmedDialog = false
+                                    }
+                                ) {
+                                    Text("Annulla", color = Color.Red)
+                                }
+                            },
+                            containerColor = Color.White,
+                            iconContentColor = MaterialTheme.colorScheme.error,
+                            titleContentColor = Color.Black
+                        )
+                    }
+                    if (isCompletedDialog) {
+                        AlertDialog(
+                            onDismissRequest = { isCompletedDialog = false },
+                            icon = { Image(
+                                painter = painterResource(id = R.drawable.check_mark_button_svgrepo_com),
+                                contentDescription = "Warning",
+                                modifier = Modifier.size(48.dp),
+                            ) },
+                            title = { Text("Success!") },
+                            text = { Text("Lo stato della task è stata cambiata con successo!") },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        // Chiudi il dialog e permetti all'utente di riprovare
+                                        isCompleted = true
+                                        isCompletedDialog = false
+                                        if(tipo.equals("dipendente")) {
+                                            val intent = Intent(this, HomeDipendenteActivity::class.java)
+                                            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                            startActivity(intent)
+                                            finish()
+                                        }
+                                        else{
+                                            val intent = Intent(this, HomeManagerActivity::class.java)
+                                            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                            startActivity(intent)
+                                            finish()
+                                        }
+                                    }
+                                ) {
+                                    Text("OK")
+                                }
+                            },
+                            containerColor = Color.White,
+                            iconContentColor = MaterialTheme.colorScheme.error,
+                            titleContentColor = Color.Black
                         )
                     }
                 }
@@ -171,9 +282,11 @@ class InfoViewer : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, token: String) {
+fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, token: String, onErrorConn: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit, isConfirmedDialog: (Boolean) -> Unit, isConfirmed: Boolean, isCompleted: Boolean) {
     var statoAttuale by remember { mutableStateOf(taskObj.stato) }
     var isExpanded by remember { mutableStateOf(false) }
+    var showConfirmationDialog by remember { mutableStateOf(false) }
+    var statoDaImpostare by remember { mutableStateOf("")}
     val api = RetrofitInstance.api
     val handler = CoroutineExceptionHandler { _, exception ->
         println("Caught $exception")
@@ -195,6 +308,110 @@ fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValu
             Color("#FBAB76".toColorInt()),
         )
     }
+    if (showConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+            icon = { Image(
+                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                contentDescription = "Warning",
+                modifier = Modifier.size(48.dp),
+            ) },
+            title = { Text("Attenzione") },
+            text = { Text("Desideri davvero proseguire con il cambio di stato del seguente task?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmationDialog = false
+                        scope.launch(Dispatchers.IO + handler) {
+                            try {
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(true)
+                                }
+
+                                val responseStatus = async {
+                                    if(tipo.equals("dipendente")) {
+                                        api.updateTask(
+                                            mapOf<String, Any>(
+                                                "token" to token,
+                                                "id" to taskObj.id,
+                                                "stato" to statoDaImpostare
+                                            )
+                                        )
+                                    }
+                                    else{
+                                            api.updateTaskMGR(
+                                                mapOf<String, Any>(
+                                                    "token" to token,
+                                                    "id" to taskObj.id,
+                                                    "nome" to taskObj.nome,
+                                                    "stato" to statoDaImpostare,
+                                                    "descrizione" to taskObj.descrizione,
+                                                    "data_inizio" to taskObj.data_inizio,
+                                                    "data_fine" to taskObj.data_fine,
+                                                    "email_dipendente" to taskObj.Dipendente_email,
+                                                    "email_manager" to taskObj.Manager_email
+                                                )
+                                            )
+                                    }
+                                }
+                                val response = responseStatus.await()
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(false)
+                                }
+                                if (response.isSuccessful) {
+                                    withContext(Dispatchers.Main) {
+                                        if(statoDaImpostare.equals("Completato")){
+                                            statoAttuale = "Completato"
+                                        }
+                                        else if(statoDaImpostare.equals("Sospeso")){
+                                            statoAttuale = "Sospeso"
+                                        }
+                                        else if(statoDaImpostare.equals("InProgress")){
+                                            statoAttuale = "In Corso"
+                                        }
+                                        else{
+                                            statoAttuale = ""
+                                        }
+                                        taskObj.stato = statoDaImpostare
+                                        isCompletedDialog(true)
+                                    }
+                                }
+                            } catch (e: java.net.ConnectException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorConn(true)
+                                }
+                            } catch (e: java.io.IOException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorConn(true)
+                                }
+                            } catch (e: Exception) {
+                                println("Errore sconosciuto $e")
+                            } finally {
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(false)
+                                }
+                            }
+                        }
+                    }
+                ) {
+                    Text("Conferma")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        // Chiudi il dialog e pulisci i campi
+                        showConfirmationDialog = false
+                    }
+                ) {
+                    Text("Annulla", color = Color.Red)
+                }
+            },
+            containerColor = Color.White,
+            iconContentColor = MaterialTheme.colorScheme.error,
+            titleContentColor = Color.Black
+        )
+    }
     Column(
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -202,6 +419,16 @@ fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValu
             .fillMaxSize()
             .padding(paddingValues)
     ) {
+        Spacer(Modifier.padding(top = 10.dp))
+            Text("${taskObj.Dipendente_email}", //qui va inserito il nome del progetto
+                textAlign = TextAlign.Center,
+                fontFamily = computerSaysNo,
+                fontWeight = FontWeight.W400,
+                fontSize = 30.sp,
+                modifier = Modifier.width(353.dp)
+            )
+
+        Spacer(Modifier.padding(bottom = 5.dp))
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
@@ -261,33 +488,16 @@ fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValu
                         expanded = isExpanded,
                         onDismissRequest = { isExpanded = false },
                     ) {
-                        if(tipo.equals("dipendente") && taskObj.stato.equals("Completato") || taskObj.stato.equals("Sospeso")){
+                        if(tipo.equals("dipendente") && (taskObj.stato.equals("Completato") || taskObj.stato.equals("Sospeso"))){
 
                         }
                         else if(tipo.equals("dipendente") && taskObj.stato.equals("InProgress")){
                             DropdownMenuItem(
                                 text = { Text("Completato") },
                                 onClick = {
-                                    scope.launch(Dispatchers.IO + handler) {
-                                        try{
-                                            onLoadingChange(true)
-                                            val responseStatus = async{ api.updateTask(mapOf<String, Any>("token" to token, "id" to taskObj.id, "stato" to "Completato"))}
-                                            val response = responseStatus.await()
-                                            onLoadingChange(false)
-                                            if(response.isSuccessful){
-                                                statoAttuale = "Completato"
-                                                taskObj.stato = "Completato"
-                                                isExpanded = false
-                                                println("Stato Aggiornato con successo")
-                                            }
-                                        }catch (e: java.net.ConnectException) {
-                                            println("Impossibile contattare il server")
-                                        } catch (e: java.io.IOException) {
-                                            println("Problema di connessione")
-                                        } catch (e: Exception) {
-                                            println("Errore sconosciuto $e")
-                                        }
-                                    }
+                                    statoDaImpostare = "Completato"
+                                    showConfirmationDialog =true
+                                    isExpanded = false
                                 },
                             )
                         }
@@ -295,79 +505,25 @@ fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValu
                             DropdownMenuItem(
                                 text = { Text("Completato") },
                                 onClick = {
-                                    scope.launch(Dispatchers.IO + handler) {
-                                        try{
-                                            onLoadingChange(true)
-                                            val responseStatus = async{ api.updateTaskMGR(mapOf<String,Any>("token" to token, "id" to taskObj.id, "nome" to taskObj.nome ,"stato" to "Completato", "descrizione" to taskObj.descrizione,
-                                                "data_inizio" to taskObj.data_inizio, "data_fine" to taskObj.data_fine, "email_dipendente" to taskObj.Dipendente_email, "email_manager" to taskObj.Manager_email))}
-                                            val response = responseStatus.await()
-                                            onLoadingChange(false)
-                                            if(response.isSuccessful){
-                                                statoAttuale = "Completato"
-                                                taskObj.stato = "Completato"
-                                                isExpanded = false
-                                                println("Stato Aggiornato con successo")
-                                            }
-                                        }catch (e: java.net.ConnectException) {
-                                            println("Impossibile contattare il server")
-                                        } catch (e: java.io.IOException) {
-                                            println("Problema di connessione")
-                                        } catch (e: Exception) {
-                                            println("Errore sconosciuto $e")
-                                        }
-                                    }
+                                    statoDaImpostare = "Completato"
+                                    showConfirmationDialog =true
+                                    isExpanded = false
                                 },
                             )
                             DropdownMenuItem(
                                 text = { Text("In corso") },
                                 onClick = {
-                                    scope.launch(Dispatchers.IO + handler) {
-                                        try{
-                                            onLoadingChange(true)
-                                            val responseStatus = async{ api.updateTaskMGR(mapOf<String,Any>("token" to token, "id" to taskObj.id, "nome" to taskObj.nome ,"stato" to "InProgress", "descrizione" to taskObj.descrizione,
-                                                "data_inizio" to taskObj.data_inizio, "data_fine" to taskObj.data_fine, "email_dipendente" to taskObj.Dipendente_email, "email_manager" to taskObj.Manager_email))}
-                                            val response = responseStatus.await()
-                                            onLoadingChange(false)
-                                            if(response.isSuccessful){
-                                                statoAttuale = "In corso"
-                                                taskObj.stato = "InProgress"
-                                                isExpanded = false
-                                                println("Stato Aggiornato con successo")
-                                            }
-                                        }catch (e: java.net.ConnectException) {
-                                            println("Impossibile contattare il server")
-                                        } catch (e: java.io.IOException) {
-                                            println("Problema di connessione")
-                                        } catch (e: Exception) {
-                                            println("Errore sconosciuto $e")
-                                        }
-                                    }
+                                    statoDaImpostare = "InProgress"
+                                    showConfirmationDialog =true
+                                    isExpanded = false
                                 },
                             )
                             DropdownMenuItem(
                                 text = { Text("Sospeso") },
                                 onClick = {
-                                    scope.launch(Dispatchers.IO + handler) {
-                                        try{
-                                            onLoadingChange(true)
-                                            val responseStatus = async{ api.updateTaskMGR(mapOf<String,Any>("token" to token, "id" to taskObj.id, "nome" to taskObj.nome ,"stato" to "Sospeso", "descrizione" to taskObj.descrizione,
-                                                "data_inizio" to taskObj.data_inizio, "data_fine" to taskObj.data_fine, "email_dipendente" to taskObj.Dipendente_email, "email_manager" to taskObj.Manager_email))}
-                                            val response = responseStatus.await()
-                                            onLoadingChange(false)
-                                            if(response.isSuccessful){
-                                                statoAttuale = "Sospeso"
-                                                taskObj.stato = "Sospeso"
-                                                isExpanded = false
-                                                println("Stato Aggiornato con successo")
-                                            }
-                                        }catch (e: java.net.ConnectException) {
-                                            println("Impossibile contattare il server")
-                                        } catch (e: java.io.IOException) {
-                                            println("Problema di connessione")
-                                        } catch (e: Exception) {
-                                            println("Errore sconosciuto $e")
-                                        }
-                                    }
+                                    statoDaImpostare = "Sospeso"
+                                    showConfirmationDialog =true
+                                    isExpanded = false
                                 },
                             )
                         }
@@ -438,6 +594,7 @@ fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValu
                 )
             }
         }
+        Spacer(Modifier.padding(bottom = 20.dp))
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
@@ -586,7 +743,7 @@ fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValu
 }
 
 @Composable
-fun infoProgetto(progetto: Progetto, paddingValues: PaddingValues){
+fun infoProgetto(progetto: Progetto, paddingValues: PaddingValues, onErrorConn: (Boolean) -> Unit){
     Column(
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -594,6 +751,7 @@ fun infoProgetto(progetto: Progetto, paddingValues: PaddingValues){
             .fillMaxSize()
             .padding(paddingValues)
     ){
+        Spacer(Modifier.padding(top = 10.dp))
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
@@ -691,6 +849,7 @@ fun infoProgetto(progetto: Progetto, paddingValues: PaddingValues){
                 }
             }
         }
+        Spacer(Modifier.padding(bottom = 20.dp))
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier

@@ -10,6 +10,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,11 +23,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +61,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,45 +79,70 @@ class LoginActivity : ComponentActivity() {
         val handler = CoroutineExceptionHandler { _, exception ->
             println("Caught $exception")
         }
-        if (!tokenDecrypted.isNullOrBlank()) {
-            lifecycleScope.launch(Dispatchers.IO + handler) {
-                try {
-                    val responseStatus = async { api.login(mapOf("token" to tokenDecrypted)) }
-                    val response = responseStatus.await()
-                    if (response.isSuccessful) {
-                        type = response.body()!!.data.type
-                        sesso = response.body()!!.data.sesso
-                        id_dipartimento = response.body()!!.data.id_dipartimento
-                        nome_dipartimento = response.body()!!.data.nome_dipartimento
-                        nome = response.body()!!.data.name
-                        email = response.body()!!.data.email
-                        println("1Mando l'utente alla homepage oppure ritorno il token attraverso intent")
-                        val risultatoIntent = Intent()
-                        risultatoIntent.putExtra("type", type)
-                        risultatoIntent.putExtra("token", tokenDecrypted)
-                        risultatoIntent.putExtra("sesso", sesso)
-                        risultatoIntent.putExtra("id_dipartimento", id_dipartimento)
-                        risultatoIntent.putExtra("nome_dipartimento", nome_dipartimento)
-                        risultatoIntent.putExtra("nome", nome)
-                        risultatoIntent.putExtra("email", email)
-                        setResult(RESULT_OK, risultatoIntent)
 
-                        finish()
-
-                    }
-                } catch (e: java.net.ConnectException) {
-                    println("Impossibile contattare il server")
-                } catch (e: java.io.IOException) {
-                    println("Problema di connessione")
-                } catch (e: Exception) {
-                    println("Errore sconosciuto1")
-                }
-            }
-        }
         setContent {
             val context = LocalContext.current
             var showDialog by remember { mutableStateOf(false) }
             var isLoading by remember { mutableStateOf(false) }
+            var showLoginErrorDialog by remember { mutableStateOf(false) }
+            var tempEmail by remember { mutableStateOf("") }
+            var tempPassword by remember { mutableStateOf("") }
+            var isEmailValid by remember { mutableStateOf(true) }
+            var showConnErrorDialog by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit){
+                if (!tokenDecrypted.isNullOrBlank()) {
+                    lifecycleScope.launch(Dispatchers.IO + handler) {
+                        try {
+                            val responseStatus = async { api.login(mapOf("token" to tokenDecrypted)) }
+                            withContext(Dispatchers.Main) {
+                                isLoading = true
+                            }
+                            val response = responseStatus.await()
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
+                            if (response.isSuccessful) {
+                                withContext(Dispatchers.Main) {
+                                    type = response.body()!!.data.type
+                                    sesso = response.body()!!.data.sesso
+                                    id_dipartimento = response.body()!!.data.id_dipartimento
+                                    nome_dipartimento = response.body()!!.data.nome_dipartimento
+                                    nome = response.body()!!.data.name
+                                    email = response.body()!!.data.email
+                                    println("1Mando l'utente alla homepage oppure ritorno il token attraverso intent")
+                                    val risultatoIntent = Intent()
+                                    risultatoIntent.putExtra("type", type)
+                                    risultatoIntent.putExtra("token", tokenDecrypted)
+                                    risultatoIntent.putExtra("sesso", sesso)
+                                    risultatoIntent.putExtra("id_dipartimento", id_dipartimento)
+                                    risultatoIntent.putExtra("nome_dipartimento", nome_dipartimento)
+                                    risultatoIntent.putExtra("nome", nome)
+                                    risultatoIntent.putExtra("email", email)
+                                    setResult(RESULT_OK, risultatoIntent)
+
+                                    finish()
+                                }
+
+                            }
+                        } catch (e: java.net.ConnectException) {
+                            withContext(Dispatchers.Main) {
+                                showConnErrorDialog = true
+                            }
+
+                        } catch (e: java.io.IOException) {
+                            withContext(Dispatchers.Main) {
+                                showConnErrorDialog = true
+                            }
+                        } catch (e: Exception) {
+                            println("Errore sconosciuto1")
+                        }finally {
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
+                        }
+                    }
+                }
+            }
             if (showDialog) {
                 AlertDialog(
                     onDismissRequest = { showDialog = false },
@@ -148,6 +177,68 @@ class LoginActivity : ComponentActivity() {
             BackHandler {
                 showDialog = true
             }
+            if (showLoginErrorDialog) {
+                AlertDialog(
+                    onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+                    icon = { Image(
+                        painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                        contentDescription = "Warning",
+                        modifier = Modifier.size(48.dp),
+                    ) },
+                    title = { Text("Login Fallito") },
+                    text = { Text("Email o password sono errati. Controlla i dati e riprova.") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                // Chiudi il dialog e permetti all'utente di riprovare
+                                showLoginErrorDialog = false
+                            }
+                        ) {
+                            Text("Riprova")
+                        }
+                    },
+                    dismissButton = {
+                        Button(
+                            onClick = {
+                                // Chiudi il dialog e pulisci i campi
+                                tempEmail = ""
+                                tempPassword = ""
+                                showLoginErrorDialog = false
+                            }
+                        ) {
+                            Text("Annulla", color = Color.Red)
+                        }
+                    },
+                    containerColor = Color.White,
+                    iconContentColor = MaterialTheme.colorScheme.error,
+                    titleContentColor = Color.Black
+                )
+            }
+            if (showConnErrorDialog) {
+                AlertDialog(
+                    onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+                    icon = { Image(
+                        painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                        contentDescription = "Warning",
+                        modifier = Modifier.size(48.dp),
+                    ) },
+                    title = { Text("Problema di connessione") },
+                    text = { Text("Problema di connessione si prega di attendere e riprovare.") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                // Chiudi il dialog e permetti all'utente di riprovare
+                                showConnErrorDialog = false
+                            }
+                        ) {
+                            Text("Riprova")
+                        }
+                    },
+                    containerColor = Color.White,
+                    iconContentColor = MaterialTheme.colorScheme.error,
+                    titleContentColor = Color.Black
+                )
+            }
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -173,8 +264,7 @@ class LoginActivity : ComponentActivity() {
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    var tempEmail by remember { mutableStateOf("") }
-                    var tempPassword by remember { mutableStateOf("") }
+
                     Image(
                         painter = painterResource(id = R.drawable.taskyfinalnobackground),
                         contentDescription = "Logo Tasky",
@@ -205,21 +295,38 @@ class LoginActivity : ComponentActivity() {
 
                     TextField(
                         value = tempEmail,
-                        onValueChange = { it -> tempEmail = it },
-                        placeholder = { Text("Email") }
+                        onValueChange = {
+                            it -> tempEmail = it
+                            isEmailValid = android.util.Patterns.EMAIL_ADDRESS.matcher(it).matches()
+                                        },
+                        placeholder = { Text("Email") },
+                        singleLine = true,
+                        isError = !isEmailValid,
+                        supportingText = {
+                            if(!isEmailValid){
+                                Text(
+                                    text = "Formato email non valido",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     TextField(
                         value = tempPassword,
                         onValueChange = { it -> tempPassword = it },
-                        placeholder = { Text("Password") }
+                        placeholder = { Text("Password") },
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
                     )
+                    Spacer(Modifier.padding(bottom = 20.dp))
                     Button(onClick = {
                         email = tempEmail
                         password = tempPassword
                         lifecycleScope.launch(Dispatchers.IO + handler) {
                             try {
-                                isLoading = true
+                                withContext(Dispatchers.Main) {
+                                    isLoading = true
+                                }
                                 val responseStatus =
                                     async {
                                         api.login(
@@ -230,56 +337,79 @@ class LoginActivity : ComponentActivity() {
                                         )
                                     }
                                 val response = responseStatus.await()
-                                isLoading = false
+                                withContext(Dispatchers.Main) {
+                                    isLoading = false
+                                }
                                 if (response.isSuccessful) {
-                                    sessionManager.clearAuthToken()
-                                    sessionManager.saveAuthToken(response.body()!!.data.token)
-                                    type = response.body()!!.data.type
-                                    sesso = response.body()!!.data.sesso
-                                    id_dipartimento = response.body()!!.data.id_dipartimento
-                                    nome_dipartimento = response.body()!!.data.nome_dipartimento
-                                    nome = response.body()!!.data.name
-                                    println("2Mando l'utente sulla pagina iniziale o intent a main activity")
-                                    val risultatoIntent = Intent()
-                                    risultatoIntent.putExtra("type", type)
-                                    risultatoIntent.putExtra("token", response.body()!!.data.token)
-                                    risultatoIntent.putExtra("sesso", sesso)
-                                    risultatoIntent.putExtra("id_dipartimento", id_dipartimento)
-                                    risultatoIntent.putExtra("nome_dipartimento", nome_dipartimento)
-                                    risultatoIntent.putExtra("nome", nome)
-                                    risultatoIntent.putExtra("email", email)
-                                    setResult(RESULT_OK, risultatoIntent)
-                                    finish()
+                                    withContext(Dispatchers.Main) {
+                                        sessionManager.clearAuthToken()
+                                        sessionManager.saveAuthToken(response.body()!!.data.token)
+                                        type = response.body()!!.data.type
+                                        sesso = response.body()!!.data.sesso
+                                        id_dipartimento = response.body()!!.data.id_dipartimento
+                                        nome_dipartimento = response.body()!!.data.nome_dipartimento
+                                        nome = response.body()!!.data.name
+                                        println("2Mando l'utente sulla pagina iniziale o intent a main activity")
+                                        val risultatoIntent = Intent()
+                                        risultatoIntent.putExtra("type", type)
+                                        risultatoIntent.putExtra(
+                                            "token",
+                                            response.body()!!.data.token
+                                        )
+                                        risultatoIntent.putExtra("sesso", sesso)
+                                        risultatoIntent.putExtra("id_dipartimento", id_dipartimento)
+                                        risultatoIntent.putExtra(
+                                            "nome_dipartimento",
+                                            nome_dipartimento
+                                        )
+                                        risultatoIntent.putExtra("nome", nome)
+                                        risultatoIntent.putExtra("email", email)
+                                        setResult(RESULT_OK, risultatoIntent)
+                                        finish()
+                                    }
                                 } else {
+                                    withContext(Dispatchers.Main) {
+                                        showLoginErrorDialog = true
+                                    }
                                     println("2Email o password errati")
                                 }
                             } catch (e: java.net.ConnectException) {
-                                println("Impossibile contattare il server")
+                                withContext(Dispatchers.Main) {
+                                    showConnErrorDialog = true
+                                }
                             } catch (e: java.io.IOException) {
-                                println("Problema di connessione")
+                                withContext(Dispatchers.Main) {
+                                    showConnErrorDialog = true
+                                }
                             } catch (e: Exception) {
                                 println("Errore sconosciuto2 $e")
+                            }finally {
+                                withContext(Dispatchers.Main) {
+                                    isLoading = false
+                                }
                             }
                         }
 
-                    }) {
+                    },
+                        enabled = tempEmail.isNotBlank() && tempPassword.isNotBlank() && isEmailValid
+                        ) {
                         Text(text = "Login")
                     }
                 }
                 if (isLoading) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = Color.Black.copy(alpha = 0.3f), // Grigio trasparente
-                        onClick = { /* Non fare nulla, serve a intercettare i click */ }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize() // Occupa tutto lo schermo
+                            .background(Color.Black.copy(alpha = 0.4f)) // Sfondo scuro e semitrasparente
+                            .clickable(enabled = false, onClick = {}), // Blocca i click sullo sfondo
+                        contentAlignment = Alignment.Center // 2. Centra TUTTO il suo contenuto
                     ) {
-                        // Vuoto, serve solo per il colore
+                        // 3. Il CircularProgressIndicator ora verrà centrato da questo Box
+                        CircularProgressIndicator(
+                            color = Color.Magenta,
+                            strokeWidth = 5.dp // Aumentato leggermente per maggiore visibilità
+                        )
                     }
-
-                    // Il cerchio sopra lo sfondo scuro
-                    CircularProgressIndicator(
-                        color = Color.Magenta, // Colore del cerchio
-                        strokeWidth = 4.dp
-                    )
                 }
             }
         }

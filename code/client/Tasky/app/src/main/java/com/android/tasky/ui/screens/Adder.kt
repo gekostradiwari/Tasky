@@ -1,6 +1,8 @@
 package com.android.tasky.ui.screens
 
 import android.app.Activity
+import android.content.Intent
+import android.icu.util.Calendar
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -38,6 +41,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -75,10 +79,13 @@ import com.android.tasky.dto.Dipendente
 import com.android.tasky.dto.Progetto
 import com.android.tasky.ui.theme.computerSaysNo
 import com.android.tasky.utility.RetrofitInstance
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -95,27 +102,43 @@ class Adder : ComponentActivity() {
         val nome_dipartimento = intent.getStringExtra("nome_dipartimento")
         val nome_progetto = intent.getStringExtra("nome_progetto")
         val id_progetto = intent.getIntExtra("id_progetto", 0)
+        val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+        val jsonRicevutoProject = intent.getStringExtra("progetto")
+        val progettoAdapter = moshi.adapter(Progetto::class.java)
+        var progettoObj: Progetto? = if (jsonRicevutoProject != null) {
+            progettoAdapter.fromJson(jsonRicevutoProject)
+        } else {
+            null
+        }
         setContent {
             val context = LocalContext.current
             var isLoading by remember { mutableStateOf(false) }
+            var showConnErrorDialog by remember { mutableStateOf(false) }
+            var isConfirmedDialog by remember {mutableStateOf(false)}
+            var isCompletedDialog by remember {mutableStateOf(false)}
+            var isConfirmed by remember {mutableStateOf(false)}
+            var isCompleted by remember {mutableStateOf(false)}
             Scaffold(
                 topBar = {
                     Row(
-                        modifier = Modifier.height(70.dp)
+                        modifier = Modifier
+                            .height(70.dp)
                             .fillMaxWidth()
-                            .background(brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color("#D06FCA".toColorInt()),
-                                    Color("#A56FD9".toColorInt()),
-                                    Color("#866FE5".toColorInt()),
-                                    Color("#7B6FE9".toColorInt()),
-                                    Color("#A56FD9".toColorInt()),
-                                    Color("#D06FCA".toColorInt()),
-                                    Color("#A56FD9".toColorInt()),
-                                    Color("#7B6FE9".toColorInt())
-                                )
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color("#D06FCA".toColorInt()),
+                                        Color("#A56FD9".toColorInt()),
+                                        Color("#866FE5".toColorInt()),
+                                        Color("#7B6FE9".toColorInt()),
+                                        Color("#A56FD9".toColorInt()),
+                                        Color("#D06FCA".toColorInt()),
+                                        Color("#A56FD9".toColorInt()),
+                                        Color("#7B6FE9".toColorInt())
+                                    )
 
-                            )),
+                                )
+                            ),
                         horizontalArrangement = Arrangement.spacedBy(125.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -124,37 +147,93 @@ class Adder : ComponentActivity() {
                             Icon(Icons.Default.ArrowBack, "TurnBack")
                         }
                         Image(
-                            painter = painterResource(id = R.drawable.tasky_logo),
+                            painter = painterResource(id = R.drawable.taskyfinalnobackground),
                             contentDescription = "Logo Tasky",
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(74.dp)
                         )
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
                 content = { paddingValues ->
                     if(type.equals("taskAdder")){
-                    TaskAdder(paddingValues, {isLoading = it}, token, email, id_dipartimento, nome_progetto, id_progetto)
+                    TaskAdder(paddingValues, {isLoading = it}, token, email, id_dipartimento, nome_progetto, id_progetto, progettoObj!!,{showConnErrorDialog = it}, {isCompletedDialog = it})
                     }
                     else if(type.equals("projectAdder")){
-                        projectAdder(paddingValues, {isLoading = it}, token, id_dipartimento)
+                        projectAdder(paddingValues, {isLoading = it}, token, id_dipartimento,{showConnErrorDialog = it}, {isCompletedDialog = it})
                     }
                     else{
                         Text(text = "Errore")
                     }
                     if (isLoading) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = Color.Black.copy(alpha = 0.3f), // Grigio trasparente
-                            onClick = { /* Non fare nulla, serve a intercettare i click */ }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize() // Occupa tutto lo schermo
+                                .background(Color.Black.copy(alpha = 0.4f)) // Sfondo scuro e semitrasparente
+                                .clickable(enabled = false, onClick = {})
+                                .padding(paddingValues), // Blocca i click sullo sfondo
+                            contentAlignment = Alignment.Center // 2. Centra TUTTO il suo contenuto
                         ) {
-                            // Vuoto, serve solo per il colore
+                            // 3. Il CircularProgressIndicator ora verrà centrato da questo Box
+                            CircularProgressIndicator(
+                                color = Color.Magenta,
+                                strokeWidth = 5.dp // Aumentato leggermente per maggiore visibilità
+                            )
                         }
-
-                        // Il cerchio sopra lo sfondo scuro
-                        CircularProgressIndicator(
-                            color = Color.Magenta, // Colore del cerchio
-                            strokeWidth = 4.dp
+                    }
+                    if (showConnErrorDialog) {
+                        AlertDialog(
+                            onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+                            icon = { Image(
+                                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                                contentDescription = "Warning",
+                                modifier = Modifier.size(48.dp),
+                            ) },
+                            title = { Text("Problema di connessione") },
+                            text = { Text("Problema di connessione si prega di attendere e riprovare.") },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        // Chiudi il dialog e permetti all'utente di riprovare
+                                        showConnErrorDialog = false
+                                    }
+                                ) {
+                                    Text("Riprova")
+                                }
+                            },
+                            containerColor = Color.White,
+                            iconContentColor = MaterialTheme.colorScheme.error,
+                            titleContentColor = Color.Black
+                        )
+                    }
+                    if (isCompletedDialog) {
+                        AlertDialog(
+                            onDismissRequest = { isCompletedDialog = false },
+                            icon = { Image(
+                                painter = painterResource(id = R.drawable.check_mark_button_svgrepo_com),
+                                contentDescription = "Warning",
+                                modifier = Modifier.size(48.dp),
+                            ) },
+                            title = { Text("Success!") },
+                            text = { Text("L'operazione è avvenuta con successo!") },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        // Chiudi il dialog e permetti all'utente di riprovare
+                                        isCompleted = true
+                                        isCompletedDialog = false
+                                            val intent = Intent(this, HomeManagerActivity::class.java)
+                                            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                            startActivity(intent)
+                                            finish()
+                                    }
+                                ) {
+                                    Text("OK")
+                                }
+                            },
+                            containerColor = Color.White,
+                            iconContentColor = MaterialTheme.colorScheme.error,
+                            titleContentColor = Color.Black
                         )
                     }
                 }
@@ -167,7 +246,7 @@ class Adder : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, token: String?, email: String?, id_dipartimento: Int, nome_progetto: String?, id_progetto: Int) {
+fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, token: String?, email: String?, id_dipartimento: Int, nome_progetto: String?, id_progetto: Int, progettoObj: Progetto, onErrorConn: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit) {
     val datePickerState = rememberDatePickerState()
     var showDialog by remember { mutableStateOf(false) }
     val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -188,16 +267,25 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
     var progetto: String? = null
     var progettoSelezionato by remember { mutableStateOf(progetto) }
     var isExpandedProgetto by remember { mutableStateOf(false) }
+    var isNomeTaskValid by remember { mutableStateOf(true) }
+    var isDescrizioneValid by remember { mutableStateOf(true) }
+    var isDataInizioValid by remember { mutableStateOf(true) }
+    var isDataFineValid by remember { mutableStateOf(true) }
+    val dataInizioProgetto = remember { progettoObj?.dataInizio?.toDateOrNull() }
+    val dataFineProgetto = remember { progettoObj?.dataFine?.toDateOrNull() }
     val api = RetrofitInstance.api
     val handler = CoroutineExceptionHandler { _, exception ->
         println("Caught $exception")
     }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    var showConfirmationDialog by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         scope.launch(Dispatchers.IO + handler) {
             try {
-                onLoadingChange(true)
+                withContext(Dispatchers.Main) {
+                    onLoadingChange(true)
+                }
                 val responseStatus = async {
                     api.dipendentiByDepartment(
                         mapOf<String, Any>(
@@ -207,29 +295,134 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                     )
                 }
                 val response = responseStatus.await()
-                onLoadingChange(false)
+                withContext(Dispatchers.Main) {
+                    onLoadingChange(false)
+                }
                 if (response.isSuccessful) {
-                    Dipendenti_List = response.body()!!.items
+                    withContext(Dispatchers.Main) {
+                        Dipendenti_List = response.body()!!.items
+                    }
                 }
             } catch (e: java.net.ConnectException) {
-                println("Impossibile contattare il server")
+                withContext(Dispatchers.Main) {
+                    onErrorConn(true)
+                }
             } catch (e: java.io.IOException) {
-                println("Problema di connessione")
+                withContext(Dispatchers.Main) {
+                    onErrorConn(true)
+                }
             } catch (e: Exception) {
                 println("Errore sconosciuto $e")
             }
         }
     }
+    fun validateAll(): Boolean {
+        isNomeTaskValid = nomeTask.isNotBlank() && nomeTask.length <= 20
+        isDescrizioneValid = testoDescrizione.length <= 500
+
+        val dataInizioTask = selectedDateString.toDateOrNull()
+        val dataFineTask = selectedDateStringFine.toDateOrNull()
+
+        isDataInizioValid = dataInizioTask != null && !dataInizioTask.isBeforeToday() &&
+                (dataInizioProgetto == null || !dataInizioTask.before(dataInizioProgetto))
+
+        isDataFineValid = dataFineTask != null && dataInizioTask != null &&
+                !dataFineTask.before(dataInizioTask) &&
+                (dataFineProgetto == null || !dataFineTask.after(dataFineProgetto))
+
+        return isNomeTaskValid && isDescrizioneValid && isDataInizioValid && isDataFineValid && dipendenteSelezionato != null
+    }
+
+    if (showConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+            icon = { Image(
+                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                contentDescription = "Warning",
+                modifier = Modifier.size(48.dp),
+            ) },
+            title = { Text("Attenzione") },
+            text = { Text("Desideri davvero proseguire con l'aggiunta del seguente task?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmationDialog = false
+                        scope.launch(Dispatchers.IO + handler) {
+                            try {
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(true)
+                                }
+                                val responseStatus = async {
+                                    api.addTask(
+                                        mapOf<String, Any>(
+                                            "token" to token!!,
+                                            "id_dipartimento" to id_dipartimento,
+                                            "id_progetto" to id_progetto,
+                                            "id_dipartimento" to id_dipartimento,
+                                            "nome" to nomeTask,
+                                            "stato" to "InProgress",
+                                            "descrizione" to testoDescrizione,
+                                            "data_inizio" to selectedDateString,
+                                            "data_fine" to selectedDateStringFine,
+                                            "email_dipendente" to dipendenteSelezionato!!.email,
+                                            "email_manager" to email!!
+                                        )
+                                    )
+                                }
+                                val response = responseStatus.await()
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(false)
+                                }
+                                if (response.isSuccessful) {
+                                    withContext(Dispatchers.Main){
+                                        isCompletedDialog(true)
+                                    }
+                                }
+                            } catch (e: java.net.ConnectException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorConn(true)
+                                }
+                            } catch (e: java.io.IOException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorConn(true)
+                                }
+                            } catch (e: Exception) {
+                                println("Errore sconosciuto $e")
+                            }
+                        }
+                    }
+                ) {
+                    Text("Conferma")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        // Chiudi il dialog e pulisci i campi
+                        showConfirmationDialog = false
+                    }
+                ) {
+                    Text("Annulla", color = Color.Red)
+                }
+            },
+            containerColor = Color.White,
+            iconContentColor = MaterialTheme.colorScheme.error,
+            titleContentColor = Color.Black
+        )
+    }
+
 
 
     if (statoCorrente == 1) {
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .padding(paddingValues),
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
 
         ) {
+            Spacer(Modifier.padding(bottom = 20.dp))
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -273,8 +466,11 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                             ),
                             value = nomeTask,
                             readOnly = false,
-                            onValueChange = {nome -> nomeTask = nome},
-                            placeholder = { Text("Inserisci un nome...") },
+                            onValueChange = {nome -> nomeTask = nome
+                                            isNomeTaskValid = nome.length <= 20},
+                            isError = !isNomeTaskValid,
+                            //supportingText = {if(!isNomeTaskValid) Text("Max 20 caratteri")},
+                            placeholder = { Text("Max 20 caratteri...") },
                             textStyle = TextStyle(
                                 fontFamily = FontFamily.SansSerif,
                                 fontWeight = FontWeight.W400,
@@ -285,6 +481,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                 }
 
             }
+            Spacer(Modifier.padding(bottom = 20.dp))
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -424,8 +621,11 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                         value = testoDescrizione, //Qui ci va sempre Task.stato,
                         onValueChange = { newText ->
                             testoDescrizione = newText
+                            isDescrizioneValid = newText.length <= 500
                         },
-                        placeholder = { Text("Inserisci una descrizione...") },
+                        isError = !isDescrizioneValid,
+                        //supportingText = {if(!isDescrizioneValid) Text("Max 500 caratteri")},
+                        placeholder = { Text("Max 500 caratteri") },
                         textStyle = TextStyle(
                             fontFamily = FontFamily.SansSerif,
                             fontWeight = FontWeight.W400,
@@ -435,6 +635,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                     )
                 }
             }
+            Spacer(Modifier.padding(bottom = 20.dp))
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -516,10 +717,12 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                 }
 
             }
+            Spacer(Modifier.padding(bottom = 20.dp))
             Button(
                 onClick = {
                     statoCorrente = 2
                 }, //Qui bisogna cambiare lo stato per passare allo stato 2
+                enabled = isNomeTaskValid && isDescrizioneValid && dipendenteSelezionato != null,
                 modifier = Modifier
                     .width(130.dp)
                     .height(48.dp),
@@ -549,12 +752,14 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
         }
 
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .padding(paddingValues),
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
 
         ) {
+            Spacer(Modifier.padding(top = 20.dp))
             Box(
                 contentAlignment = Alignment.TopStart,
                 modifier = Modifier
@@ -629,6 +834,8 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                         value = selectedDateString, //Qui ci va sempre Task.stato,
                         readOnly = true,
                         onValueChange = {},
+                        isError = !isDataInizioValid,
+                        //supportingText = {if(!isDataInizioValid) Text("Data inizio non valida")},
                         label = { Text("Date") },
                         placeholder = { Text("Inserisci una data...") },
                         textStyle = TextStyle(
@@ -647,12 +854,18 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                         confirmButton = {
                             Button(
                                 onClick = {
-                                    showDialog = false
+                                    val dataSelezionata = Date(datePickerState.selectedDateMillis!!)
+                                    val oggi = Calendar.getInstance().apply { clearTime() }.time
                                     val selectedDateMillis = datePickerState.selectedDateMillis
-                                    if (selectedDateMillis != null) {
+                                    if (selectedDateMillis != null && !dataSelezionata.before(oggi) && (dataInizioProgetto == null || !dataSelezionata.before(dataInizioProgetto))) {
+                                        isDataInizioValid = true
                                         selectedDate = Date(selectedDateMillis)
                                         selectedDateString = dateFormatter.format(selectedDate)
                                     }
+                                    else{
+                                        isDataInizioValid = false
+                                    }
+                                    showDialog = false
                                 }
 
                             ) {
@@ -748,6 +961,8 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                         value = selectedDateStringFine, //Qui ci va sempre Task.stato,
                         readOnly = true,
                         onValueChange = {},
+                        isError = !isDataFineValid,
+                        //supportingText = {if(!isDataFineValid) Text("Data di fine non valida")},
                         label = { Text("Date") },
                         placeholder = { Text("Inserisci una data...") },
                         textStyle = TextStyle(
@@ -766,13 +981,20 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                         confirmButton = {
                             Button(
                                 onClick = {
-                                    showDialogFine = false
+                                    val dataInizioTask = selectedDateString.toDateOrNull()
+                                    val dataFineSelezionata = Date(datePickerStateFine.selectedDateMillis!!)
                                     val selectedDateMillis = datePickerStateFine.selectedDateMillis
-                                    if (selectedDateMillis != null) {
+                                    if (selectedDateMillis != null &&dataInizioTask != null && !dataFineSelezionata.before(dataInizioTask) &&
+                                        (dataFineProgetto == null || !dataFineSelezionata.after(dataFineProgetto))) {
+                                        isDataFineValid = true
                                         selectedDateFine = Date(selectedDateMillis)
                                         selectedDateStringFine =
                                             dateFormatter.format(selectedDateFine)
                                     }
+                                    else {
+                                        isDataFineValid = false
+                                    }
+                                    showDialogFine = false
                                 }
 
                             ) {
@@ -793,10 +1015,12 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
 
 
             }
+            Spacer(Modifier.padding(bottom = 20.dp))
             Button(
                 onClick = {
                     statoCorrente = 3
                 }, //Qui bisogna cambiare lo stato per passare allo stato 2
+                enabled = isDataInizioValid && isDataFineValid && !selectedDateString.isNullOrBlank() && !selectedDateString.isNullOrBlank(),
                 modifier = Modifier
                     .width(130.dp)
                     .height(48.dp),
@@ -808,11 +1032,13 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
     }
     else if(statoCorrente == 3){
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
             .padding(paddingValues),
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Spacer(Modifier.padding(top = 20.dp))
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
@@ -1026,42 +1252,14 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                     .padding(top = 15.dp)
             )
         }
+        Spacer(Modifier.padding(bottom = 20.dp))
         Button(
             onClick = {
-                scope.launch(Dispatchers.IO + handler) {
-                    try {
-                        onLoadingChange(true)
-                        val responseStatus = async {
-                            api.addTask(
-                                mapOf<String, Any>(
-                                    "token" to token!!,
-                                    "id_dipartimento" to id_dipartimento,
-                                    "id_progetto" to id_progetto,
-                                    "id_dipartimento" to id_dipartimento,
-                                    "nome" to nomeTask,
-                                    "stato" to "InProgress",
-                                    "descrizione" to testoDescrizione,
-                                    "data_inizio" to selectedDateString,
-                                    "data_fine" to selectedDateStringFine,
-                                    "email_dipendente" to dipendenteSelezionato!!.email,
-                                    "email_manager" to email!!
-                                )
-                            )
-                        }
-                        val response = responseStatus.await()
-                        onLoadingChange(false)
-                        if (response.isSuccessful) {
-                            println("Task Aggiunta con successo!!")
-                        }
-                    } catch (e: java.net.ConnectException) {
-                        println("Impossibile contattare il server")
-                    } catch (e: java.io.IOException) {
-                        println("Problema di connessione")
-                    } catch (e: Exception) {
-                        println("Errore sconosciuto $e")
-                    }
-                }
+                if (validateAll()){
+                    showConfirmationDialog = true
+            }
             }, //Qui bisogna cambiare lo stato per passare allo stato 2
+            enabled = nomeTask.isNotBlank() && isDataInizioValid && isDataFineValid && dipendenteSelezionato != null,
             modifier = Modifier
                 .width(130.dp)
                 .height(48.dp),
@@ -1076,7 +1274,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, token: String?, id_dipartimento: Int) {
+fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, token: String?, id_dipartimento: Int, onErrorConn: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit) {
     var statoCorrente by remember { mutableIntStateOf(1) }
     var budget by remember { mutableStateOf("") }
     var descrizione by remember { mutableStateOf("") }
@@ -1097,13 +1295,111 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    var isNomeProgettoValid by remember { mutableStateOf(true) }
+    var isBudgetValid by remember { mutableStateOf(true) }
+    var isDescrizioneValid by remember { mutableStateOf(true) }
+    var isDataInizioValid by remember { mutableStateOf(true) }
+    var isDataFineValid by remember { mutableStateOf(true) }
+    var showConfirmationDialog by remember { mutableStateOf(false) }
+
+    val budgetRegex = remember { Regex("^(?!0\\d)\\d+(\\.\\d{1,2})?$") }
+    fun validateAll(): Boolean {
+        // Riesegue tutti i controlli (utile se l'utente preme "Aggiungi" senza toccare un campo)
+        isNomeProgettoValid = nomeProgetto.isNotBlank() && nomeProgetto.length <= 20
+        isDescrizioneValid = descrizione.length <= 500
+        isBudgetValid = budget.matches(budgetRegex) && (budget.toDoubleOrNull() ?: 0.0) > 0.0
+
+        // La validazione delle date avviene già quando vengono selezionate, ma possiamo ricontrollare
+        val dataInizio = selectedDateString.toDateOrNull()
+        val dataFine = selectedDateStringFine.toDateOrNull()
+        isDataInizioValid = dataInizio != null && !dataInizio.isBeforeToday()
+        isDataFineValid = dataFine != null && dataInizio != null && !dataFine.before(dataInizio)
+
+        return isNomeProgettoValid && isBudgetValid && isDescrizioneValid && isDataInizioValid && isDataFineValid
+    }
+    if (showConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+            icon = { Image(
+                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                contentDescription = "Warning",
+                modifier = Modifier.size(48.dp),
+            ) },
+            title = { Text("Attenzione") },
+            text = { Text("Desideri davvero proseguire con l'aggiunta del seguente progetto?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmationDialog = false
+                        scope.launch(Dispatchers.IO + handler) {
+                            try {
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(true)
+                                }
+                                val responseStatus = async {
+                                    api.addProject(
+                                        mapOf<String, Any>(
+                                            "token" to token!!,
+                                            "nome" to nomeProgetto,
+                                            "descrizione" to descrizione,
+                                            "budget" to budget,
+                                            "data_inizio" to selectedDateString,
+                                            "data_fine" to selectedDateStringFine,
+                                            "id_dipartimento" to id_dipartimento,
+                                        )
+                                    )
+                                }
+                                val response = responseStatus.await()
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(false)
+                                }
+                                if (response.isSuccessful) {
+                                    withContext(Dispatchers.Main){
+                                        isCompletedDialog(true)
+                                    }
+                                }
+                            } catch (e: java.net.ConnectException) {
+                                withContext(Dispatchers.Main){
+                                    onErrorConn(true)
+                                }
+                            } catch (e: java.io.IOException) {
+                                withContext(Dispatchers.Main){
+                                    onErrorConn(true)
+                                }
+                            } catch (e: Exception) {
+                                println("Errore sconosciuto $e")
+                            }
+                        }
+                    }
+                ) {
+                    Text("Conferma")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        // Chiudi il dialog e pulisci i campi
+                        showConfirmationDialog = false
+                    }
+                ) {
+                    Text("Annulla", color = Color.Red)
+                }
+            },
+            containerColor = Color.White,
+            iconContentColor = MaterialTheme.colorScheme.error,
+            titleContentColor = Color.Black
+        )
+    }
+
     if (statoCorrente == 1) {
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .padding(paddingValues),
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(Modifier.padding(top = 20.dp))
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -1136,7 +1432,7 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                     OutlinedTextField(
                         modifier = Modifier
                             .width(190.dp)
-                            .height(58.dp)
+                            .height(60.dp)
                             .shadow(elevation = 20.dp, shape = RoundedCornerShape(34))
                             .background(Color.White, shape = RoundedCornerShape(34)),
                         shape = RoundedCornerShape(34),
@@ -1148,8 +1444,11 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                         value = budget, //Qui ci va sempre Task.stato,
                         onValueChange = { newText ->
                             budget = newText
+                            isBudgetValid = newText.matches(budgetRegex) && (newText.toDoubleOrNull() ?: 0.0) > 0.0
                         },
-                        placeholder = { Text("Inserisci budget, ex: 100.50") },
+                        isError = !isBudgetValid,
+                        //supportingText = {if(!isBudgetValid) Text("Formato non valido o importo nullo", color = MaterialTheme.colorScheme.error)},
+                        placeholder = { Text("es: 100.50") },
                         textStyle = TextStyle(
                             fontFamily = FontFamily.SansSerif,
                             fontWeight = FontWeight.W400,
@@ -1218,8 +1517,11 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                         value = descrizione, //Qui ci va sempre Task.stato,
                         onValueChange = { newText ->
                             descrizione = newText
+                            isDescrizioneValid = newText.length <= 500
                         },
-                        placeholder = { Text("Inserisci una descrizione...") },
+                        isError = !isDescrizioneValid,
+                        //supportingText = {if(!isDescrizioneValid) Text("Max 500 caratteri!", color = MaterialTheme.colorScheme.error)},
+                        placeholder = { Text("Max 500 caratteri!") },
                         textStyle = TextStyle(
                             fontFamily = FontFamily.SansSerif,
                             fontWeight = FontWeight.W400,
@@ -1274,8 +1576,11 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                         value = nomeProgetto, //Qui ci va sempre Task.stato,
                         onValueChange = { newText ->
                             nomeProgetto = newText
+                            isNomeProgettoValid = newText.isNotBlank() && newText.length <= 20
                         },
-                        placeholder = { Text("Inserisci il nome del progetto") },
+                        isError = !isNomeProgettoValid,
+                        //supportingText = {if(!isNomeProgettoValid) Text("Max 20 caratteri!", color = MaterialTheme.colorScheme.error)},
+                        placeholder = { Text("Max 20 caratteri") },
                         textStyle = TextStyle(
                             fontFamily = FontFamily.SansSerif,
                             fontWeight = FontWeight.W400,
@@ -1287,10 +1592,12 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                 }
 
             }
+            Spacer(Modifier.padding(bottom = 20.dp))
             Button(
                 onClick = {
                     statoCorrente = 2
-                }, //Qui bisogna cambiare lo stato per passare allo stato 2
+                },
+                enabled = isNomeProgettoValid && isDescrizioneValid && isBudgetValid, //Qui bisogna cambiare lo stato per passare allo stato 2
                 modifier = Modifier
                     .width(130.dp)
                     .height(48.dp),
@@ -1320,12 +1627,14 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
         }
 
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .padding(paddingValues),
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
 
         ) {
+            Spacer(Modifier.padding(top = 20.dp))
             Box(
                 contentAlignment = Alignment.TopStart,
                 modifier = Modifier
@@ -1400,6 +1709,8 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                         value = selectedDateString, //Qui ci va sempre Task.stato,
                         readOnly = true,
                         onValueChange = {},
+                        isError = !isDataInizioValid,
+                        //supportingText = {if(!isDataInizioValid) Text("Selezionare una data di inizio valida!", color = MaterialTheme.colorScheme.error)},
                         label = { Text("Date") },
                         placeholder = { Text("Inserisci una data...") },
                         textStyle = TextStyle(
@@ -1418,12 +1729,16 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                         confirmButton = {
                             Button(
                                 onClick = {
-                                    showDialog = false
+                                    val dataSelezionata = Date(datePickerState.selectedDateMillis!!)
                                     val selectedDateMillis = datePickerState.selectedDateMillis
-                                    if (selectedDateMillis != null) {
+                                    if(!dataSelezionata.isBeforeToday() && selectedDateMillis != null){
+                                        isDataInizioValid = true
                                         selectedDate = Date(selectedDateMillis)
                                         selectedDateString = dateFormatter.format(selectedDate)
+                                    }else {
+                                        isDataInizioValid = false
                                     }
+                                    showDialog = false
                                 }
 
                             ) {
@@ -1519,6 +1834,8 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                         value = selectedDateStringFine, //Qui ci va sempre Task.stato,
                         readOnly = true,
                         onValueChange = {},
+                        isError = !isDataFineValid,
+                        //supportingText = {if(!isDataFineValid) Text("Selezionare una data di fine valida!", color = MaterialTheme.colorScheme.error)},
                         label = { Text("Date") },
                         placeholder = { Text("Inserisci una data...") },
                         textStyle = TextStyle(
@@ -1537,13 +1854,19 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                         confirmButton = {
                             Button(
                                 onClick = {
-                                    showDialogFine = false
                                     val selectedDateMillis = datePickerStateFine.selectedDateMillis
-                                    if (selectedDateMillis != null) {
+                                    val dataInizio = selectedDateString.toDateOrNull()
+                                    val dataFineSelezionata = Date(datePickerStateFine.selectedDateMillis!!)
+                                    if(dataInizio != null && !dataFineSelezionata.before(dataInizio) && selectedDateMillis != null) {
+                                        isDataFineValid = true
                                         selectedDateFine = Date(selectedDateMillis)
                                         selectedDateStringFine =
                                             dateFormatter.format(selectedDateFine)
                                     }
+                                    else {
+                                        isDataFineValid = false
+                                    }
+                                    showDialogFine = false
                                 }
 
                             ) {
@@ -1564,10 +1887,12 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
 
 
             }
+            Spacer(Modifier.padding(bottom = 20.dp))
             Button(
                 onClick = {
                     statoCorrente = 3
-                }, //Qui bisogna cambiare lo stato per passare allo stato 2
+                },
+                enabled = isDataInizioValid && isDataFineValid && !selectedDateString.isNullOrBlank()  && !selectedDateStringFine.isNullOrBlank(),//Qui bisogna cambiare lo stato per passare allo stato 2
                 modifier = Modifier
                     .width(130.dp)
                     .height(48.dp),
@@ -1578,11 +1903,13 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
         }
     } else if (statoCorrente == 3){
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .padding(paddingValues),
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(Modifier.padding(top = 20.dp))
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -1599,7 +1926,7 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                     )
             ) {
                 Text(
-                    "Budget: ", //Inserire il budget del progetto
+                    "Budget: ${budget}", //Inserire il budget del progetto
                     textAlign = TextAlign.Center,
                     fontFamily = computerSaysNo,
                     fontWeight = FontWeight.W400,
@@ -1670,7 +1997,7 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                                 unfocusedBorderColor = Color.Transparent,
                                 disabledBorderColor = Color.Transparent,
                             ),
-                            value = "Completato", //Qui ci va sempre Task.stato,
+                            value = "${descrizione}", //Qui ci va sempre Task.stato,
                             readOnly = true,
                             onValueChange = {},
                             textStyle = TextStyle(
@@ -1705,7 +2032,7 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         Text(
-                            "Nome: Nome Progetto", //Inserire il nome del progetto
+                            "Nome: ${nomeProgetto}", //Inserire il nome del progetto
                             textAlign = TextAlign.Start,
                             fontFamily = computerSaysNo,
                             fontWeight = FontWeight.W400,
@@ -1736,7 +2063,7 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                     )
             ) {
                 Text(
-                    "Data inizio: ", //Inserire il nome del dipendente
+                    "Data inizio: ${selectedDateString}", //Inserire il nome del dipendente
                     textAlign = TextAlign.Center,
                     fontFamily = computerSaysNo,
                     fontWeight = FontWeight.W400,
@@ -1763,7 +2090,7 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                     )
             ) {
                 Text(
-                    "Data fine: ", //Inserire il nome del dipendente
+                    "Data fine: ${selectedDateStringFine}", //Inserire il nome del dipendente
                     textAlign = TextAlign.Center,
                     fontFamily = computerSaysNo,
                     fontWeight = FontWeight.W400,
@@ -1773,39 +2100,15 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                         .padding(top = 15.dp)
                 )
             }
+            Spacer(Modifier.padding(bottom = 20.dp))
             Button(
                 onClick = {
-                    scope.launch(Dispatchers.IO + handler) {
-                        try {
-                            onLoadingChange(true)
-                            val responseStatus = async {
-                                api.addProject(
-                                    mapOf<String, Any>(
-                                        "token" to token!!,
-                                        "nome" to nomeProgetto,
-                                        "descrizione" to descrizione,
-                                        "budget" to budget,
-                                        "data_inizio" to selectedDateString,
-                                        "data_fine" to selectedDateStringFine,
-                                        "id_dipartimento" to id_dipartimento,
-                                    )
-                                )
-                            }
-                            val response = responseStatus.await()
-                            onLoadingChange(false)
-                            if (response.isSuccessful) {
-                                println("Progetto aggiunto con successo!!")
-                            }
-                        } catch (e: java.net.ConnectException) {
-                            println("Impossibile contattare il server")
-                        } catch (e: java.io.IOException) {
-                            println("Problema di connessione")
-                        } catch (e: Exception) {
-                            println("Errore sconosciuto $e")
-                        }
+                    if(validateAll()) {
+                        showConfirmationDialog = true
                     }
 
-                }, //Qui bisogna cambiare lo stato per passare allo stato 2
+                },
+                enabled = nomeProgetto.isNotBlank() && budget.isNotBlank() && isDataInizioValid && isDataFineValid,//Qui bisogna cambiare lo stato per passare allo stato 2
                 modifier = Modifier
                     .width(130.dp)
                     .height(48.dp),
@@ -1817,4 +2120,34 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
 }
 
 }
+// Funzione per convertire una stringa "dd/MM/yyyy" in un oggetto Date
+fun String.toDateOrNull(): Date? {
+    val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    return try {
+        formatter.parse(this)
+    } catch (e: Exception) {
+        null
+    }
+}
+
+// Funzione per formattare una data
+fun Date.toFormattedString(): String {
+    val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    return formatter.format(this)
+}
+
+// Funzione per verificare se una data è precedente a oggi
+fun Date.isBeforeToday(): Boolean {
+    val today = Calendar.getInstance().apply { clearTime() }.time
+    return this.before(today)
+}
+
+// Estensione per pulire l'orario da un Calendar, utile per confronti di sole date
+fun Calendar.clearTime() {
+    set(Calendar.HOUR_OF_DAY, 0)
+    set(Calendar.MINUTE, 0)
+    set(Calendar.SECOND, 0)
+    set(Calendar.MILLISECOND, 0)
+}
+
 

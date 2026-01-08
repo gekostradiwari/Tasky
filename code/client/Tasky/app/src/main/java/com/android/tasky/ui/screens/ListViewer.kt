@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,20 +32,25 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.currentCompositionLocalContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,6 +72,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleCoroutineScope
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.android.tasky.R
 import com.android.tasky.dto.Dipendente
@@ -82,6 +90,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ListViewer : ComponentActivity(){
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -110,10 +119,17 @@ class ListViewer : ComponentActivity(){
             var Task_list_By_project by remember { mutableStateOf<List<Task>>(emptyList()) }
             val context = LocalContext.current
             var isLoading by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit){
+            var showConnErrorDialog by remember { mutableStateOf(false) }
+            var isCompletedDialog by remember {mutableStateOf(false)}
+            var isCompleted by remember {mutableStateOf(false)}
+
+            suspend fun loadData(){
+                if(isLoading) return
                 lifecycleScope.launch(Dispatchers.IO + handler) {
                     try {
-                        isLoading = true;
+                        withContext(Dispatchers.Main) {
+                            isLoading = true
+                        }
                         if(type.equals("task_in_corso")){
                             println(email)
                             println(token)
@@ -121,7 +137,9 @@ class ListViewer : ComponentActivity(){
                                 api.TaskLister(mapOf("token" to token, "email_dipendente" to email))
                             }
                             val response = responseStatus.await()
-                            isLoading = false
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
                             if(response.isSuccessful){
                                 Tasks_In_Corso = response.body()!!.data.items
                             }
@@ -131,7 +149,9 @@ class ListViewer : ComponentActivity(){
                                 api.TaskListerCompleted(mapOf("token" to token, "email_dipendente" to email))
                             }
                             val response = responseStatus.await()
-                            isLoading = false
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
                             if(response.isSuccessful){
                                 Tasks_Completate = response.body()!!.data.items
                             }
@@ -141,7 +161,9 @@ class ListViewer : ComponentActivity(){
                                 api.TaskListerSuspended(mapOf("token" to token, "email_dipendente" to email))
                             }
                             val response = responseStatus.await()
-                            isLoading = false
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
                             if(response.isSuccessful){
                                 Tasks_Sospese = response.body()!!.data.items
                             }
@@ -152,7 +174,9 @@ class ListViewer : ComponentActivity(){
                                 api.dipendentiByDepartment(mapOf<String,Any>("token" to token!!, "id_dipartimento" to dipartimento))
                             }
                             val response = responseStatus.await()
-                            isLoading = false
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
                             if(response.isSuccessful){
                                 Dipendenti_List = response.body()!!.items
                             }
@@ -162,7 +186,9 @@ class ListViewer : ComponentActivity(){
                                 api.getProjectByDepartment(mapOf<String,Any>("token" to token!!, "id_dipartimento" to dipartimento))
                             }
                             val response = responseStatus.await()
-                            isLoading = false
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
                             if(response.isSuccessful){
                                 Progetti_List = response.body()!!.data.items
                             }
@@ -172,7 +198,9 @@ class ListViewer : ComponentActivity(){
                                 api.getTaskByProjectMGR(mapOf<String,Any>("token" to token!!, "id_progetto" to progetto, "id_dipartimento" to dipartimento))
                             }
                             val response = responseStatus.await()
-                            isLoading = false
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
                             if(response.isSuccessful){
                                 Task_list_By_project = response.body()!!.data.items
                             }
@@ -183,22 +211,165 @@ class ListViewer : ComponentActivity(){
                                 api.getProjectsByMGR(mapOf("email_manager" to email!!))
                             }
                             val response = responseStatus.await()
-                            isLoading = false
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
                             if(response.isSuccessful){
                                 Progetti_List = response.body()!!.data.items
                             }
                         }
 
                     } catch (e: java.net.ConnectException) {
-                        println("Impossibile contattare il server")
+                        withContext(Dispatchers.Main) {
+                            showConnErrorDialog = true
+                        }
                     } catch (e: java.io.IOException) {
-                        println("Problema di connessione")
+                        withContext(Dispatchers.Main) {
+                            showConnErrorDialog = true
+                        }
                     } catch (e: Exception) {
                         println("Errore sconosciuto $e")
+                    }finally {
+                        withContext(Dispatchers.Main) {
+                            isLoading = false
+                        }
+                    }
+                }
+            }
+            val lifecycleOwner = LocalLifecycleOwner.current
+            val scope = rememberCoroutineScope()
+            DisposableEffect(lifecycleOwner){
+                val observer = LifecycleEventObserver { _, event ->
+                    // Se l'evento è ON_RESUME, ricarica i dati
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        scope.launch {
+                            loadData()
+                        }
                     }
                 }
 
+                // Aggiungi l'osservatore al ciclo di vita
+                lifecycleOwner.lifecycle.addObserver(observer)
+
+                // Rimuovi l'osservatore quando il Composable viene distrutto per evitare memory leak
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+
             }
+            /*LaunchedEffect(Unit){
+                lifecycleScope.launch(Dispatchers.IO + handler) {
+                    try {
+                        withContext(Dispatchers.Main) {
+                            isLoading = true
+                        }
+                        if(type.equals("task_in_corso")){
+                            println(email)
+                            println(token)
+                            val responseStatus = async{
+                                api.TaskLister(mapOf("token" to token, "email_dipendente" to email))
+                            }
+                            val response = responseStatus.await()
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
+                            if(response.isSuccessful){
+                                Tasks_In_Corso = response.body()!!.data.items
+                            }
+                        }
+                        else if(type.equals("task_completati")){
+                            val responseStatus = async{
+                                api.TaskListerCompleted(mapOf("token" to token, "email_dipendente" to email))
+                            }
+                            val response = responseStatus.await()
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
+                            if(response.isSuccessful){
+                                Tasks_Completate = response.body()!!.data.items
+                            }
+                        }
+                        else if(type.equals("task_sospesi")){ //Qui non bisogna chiudere con else ma continuare con gli altri casi se ci sono progetti dipendenti o altro
+                            val responseStatus = async{
+                                api.TaskListerSuspended(mapOf("token" to token, "email_dipendente" to email))
+                            }
+                            val response = responseStatus.await()
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
+                            if(response.isSuccessful){
+                                Tasks_Sospese = response.body()!!.data.items
+                            }
+
+                        }
+                        else if(type.equals("dipendenti")){
+                            val responseStatus = async{
+                                api.dipendentiByDepartment(mapOf<String,Any>("token" to token!!, "id_dipartimento" to dipartimento))
+                            }
+                            val response = responseStatus.await()
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
+                            if(response.isSuccessful){
+                                Dipendenti_List = response.body()!!.items
+                            }
+                        }
+                        else if(type.equals("progetti")){
+                            val responseStatus = async{
+                                api.getProjectByDepartment(mapOf<String,Any>("token" to token!!, "id_dipartimento" to dipartimento))
+                            }
+                            val response = responseStatus.await()
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
+                            if(response.isSuccessful){
+                                Progetti_List = response.body()!!.data.items
+                            }
+                        }
+                        else if(type.equals("task_by_project")){
+                            val responseStatus = async{
+                                api.getTaskByProjectMGR(mapOf<String,Any>("token" to token!!, "id_progetto" to progetto, "id_dipartimento" to dipartimento))
+                            }
+                            val response = responseStatus.await()
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
+                            if(response.isSuccessful){
+                                Task_list_By_project = response.body()!!.data.items
+                            }
+
+                        }
+                        else if(type.equals("ProgettiByMGR")){
+                            val responseStatus = async{
+                                api.getProjectsByMGR(mapOf("email_manager" to email!!))
+                            }
+                            val response = responseStatus.await()
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                            }
+                            if(response.isSuccessful){
+                                Progetti_List = response.body()!!.data.items
+                            }
+                        }
+
+                    } catch (e: java.net.ConnectException) {
+                        withContext(Dispatchers.Main) {
+                            showConnErrorDialog = true
+                        }
+                    } catch (e: java.io.IOException) {
+                        withContext(Dispatchers.Main) {
+                            showConnErrorDialog = true
+                        }
+                    } catch (e: Exception) {
+                        println("Errore sconosciuto $e")
+                    }finally {
+                        withContext(Dispatchers.Main) {
+                            isLoading = false
+                        }
+                    }
+                }
+
+            }*/
             Scaffold(
                 topBar = {
                     Row(
@@ -228,10 +399,10 @@ class ListViewer : ComponentActivity(){
                             Icon(Icons.Default.ArrowBack, "TurnBack")
                         }
                         Image(
-                            painter = painterResource(id = R.drawable.tasky_logo),
+                            painter = painterResource(id = R.drawable.taskyfinalnobackground),
                             contentDescription = "Logo Tasky",
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(78.dp)
                         )
                     }
                 },
@@ -246,19 +417,19 @@ class ListViewer : ComponentActivity(){
                     ) {
                         if(type.equals("task_in_corso")){
                             items(Tasks_In_Corso){elemento ->
-                                TaskInCorso(elemento, tipo, token, { }, is_suspend)
+                                TaskInCorso(elemento, tipo, token, { }, is_suspend, {isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
                             }
 
                         }
                         else if(type.equals("task_completati")){
                             items(Tasks_Completate){elemento ->
-                                TaskCompletata(elemento, tipo, token, { })
+                                TaskCompletata(elemento, tipo, token, { },{isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
                             }
 
                         }
                         else if(type.equals("task_sospesi")){ //Qui non bisogna chiudere con else ma continuare con gli altri casi se ci sono progetti dipendenti o altro
                             items(Tasks_Sospese){elemento ->
-                                TaskSospesa(elemento, tipo, token, { })
+                                TaskSospesa(elemento, tipo, token, { },{isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
                             }
                         }
                         else if(type.equals("dipendenti")){
@@ -269,47 +440,15 @@ class ListViewer : ComponentActivity(){
                         else if(type.equals("progetti")) {
                             items(Progetti_List) { elemento ->
                                 ProgettoElement(elemento, email, type, token, tipo, dipartimento, {
-                                    lifecycleScope.launch(Dispatchers.IO + handler){
-                                        try{
-                                            isLoading = true
-                                            val responseStatus = async{ api.deleteProject(mapOf<String, Any>("token" to token!!, "id_progetto" to elemento.id_progetto, "id_dipartimento" to dipartimento))}
-                                            val response = responseStatus.await()
-                                            isLoading = false
-                                            if(response.isSuccessful){
-                                                Progetti_List = Progetti_List - elemento
-                                            }
-                                        } catch (e: java.net.ConnectException) {
-                                            println("Impossibile contattare il server")
-                                        } catch (e: java.io.IOException) {
-                                            println("Problema di connessione")
-                                        } catch (e: Exception) {
-                                            println("Errore sconosciuto $e")
-                                        }
-                                    }
-                                }, adding, is_suspend)
+                                    Progetti_List = Progetti_List - it
+                                }, adding, is_suspend, {isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it})
                             }
                         }
                         else if(type.equals("ProgettiByMGR")) {
                             items(Progetti_List) { elemento ->
                                 ProgettoElement(elemento, email, type, token, tipo, dipartimento, {
-                                    lifecycleScope.launch(Dispatchers.IO + handler){
-                                        try{
-                                            isLoading = true
-                                            val responseStatus = async{ api.deleteProject(mapOf<String, Any>("token" to token!!, "id_progetto" to elemento.id_progetto, "id_dipartimento" to dipartimento))}
-                                            val response = responseStatus.await()
-                                            isLoading = false
-                                            if(response.isSuccessful){
-                                                Progetti_List = Progetti_List - elemento
-                                            }
-                                        } catch (e: java.net.ConnectException) {
-                                            println("Impossibile contattare il server")
-                                        } catch (e: java.io.IOException) {
-                                            println("Problema di connessione")
-                                        } catch (e: Exception) {
-                                            println("Errore sconosciuto $e")
-                                        }
-                                    }
-                                }, adding, is_suspend)
+                                    Progetti_List = Progetti_List - it
+                                }, adding, is_suspend,{isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it})
                             }
                         }
                         else if(type.equals("task_by_project") && is_suspend){
@@ -317,24 +456,8 @@ class ListViewer : ComponentActivity(){
                                 elemento ->
                                 if(elemento.stato.equals("InProgress")){
                                     TaskInCorso(elemento, tipo, token, {
-                                        lifecycleScope.launch(Dispatchers.IO + handler){
-                                            try{
-                                                isLoading = true
-                                                val responseStatus = async{ api.deleteTask(mapOf<String, Any>("token" to token!!, "id" to elemento.id, "id_dipartimento" to dipartimento))}
-                                                val response = responseStatus.await()
-                                                isLoading = false
-                                                if(response.isSuccessful){
-                                                    Task_list_By_project = Task_list_By_project - elemento
-                                                }
-                                            } catch (e: java.net.ConnectException) {
-                                                println("Impossibile contattare il server")
-                                            } catch (e: java.io.IOException) {
-                                                println("Problema di connessione")
-                                            } catch (e: Exception) {
-                                                println("Errore sconosciuto $e")
-                                            }
-                                        }
-                                    }, is_suspend)
+                                        Task_list_By_project = Task_list_By_project - it
+                                    }, is_suspend, {isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
                                 }
                             }
                         }
@@ -342,81 +465,99 @@ class ListViewer : ComponentActivity(){
                             items(Task_list_By_project){elemento ->
                                 if(elemento.stato.equals("InProgress")){
                                     TaskInCorso(elemento, tipo, token, {
-                                        lifecycleScope.launch(Dispatchers.IO + handler){
-                                            try{
-                                                isLoading = true
-                                                val responseStatus = async{ api.deleteTask(mapOf<String, Any>("token" to token!!, "id" to elemento.id, "id_dipartimento" to dipartimento))}
-                                                val response = responseStatus.await()
-                                                isLoading = false
-                                                if(response.isSuccessful){
-                                                    Task_list_By_project = Task_list_By_project - elemento
-                                                }
-                                            } catch (e: java.net.ConnectException) {
-                                                println("Impossibile contattare il server")
-                                            } catch (e: java.io.IOException) {
-                                                println("Problema di connessione")
-                                            } catch (e: Exception) {
-                                                println("Errore sconosciuto $e")
-                                            }
-                                        }
-                                    },is_suspend)
+                                        Task_list_By_project = Task_list_By_project - it
+                                    },is_suspend, {isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
                                 }
                                 else if(elemento.stato.equals("Completato")){
                                     TaskCompletata(elemento, tipo, token, {
-                                        lifecycleScope.launch(Dispatchers.IO + handler){
-                                        try{
-                                            isLoading = true
-                                            val responseStatus = async{ api.deleteTask(mapOf<String, Any>("token" to token!!, "id" to elemento.id, "id_dipartimento" to dipartimento))}
-                                            val response = responseStatus.await()
-                                            isLoading = false
-                                            if(response.isSuccessful){
-                                                Task_list_By_project = Task_list_By_project - elemento
-                                            }
-                                        } catch (e: java.net.ConnectException) {
-                                            println("Impossibile contattare il server")
-                                        } catch (e: java.io.IOException) {
-                                            println("Problema di connessione")
-                                        } catch (e: Exception) {
-                                            println("Errore sconosciuto $e")
-                                        }
-                                    }})
+                                        Task_list_By_project = Task_list_By_project - it
+                                    }, {isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
                                 }
                                 else{
                                     TaskSospesa(elemento, tipo, token, {
-                                        lifecycleScope.launch(Dispatchers.IO + handler){
-                                        try{
-                                            isLoading = true
-                                            val responseStatus = async{ api.deleteTask(mapOf<String, Any>("token" to token!!, "id" to elemento.id, "id_dipartimento" to dipartimento))}
-                                            val response = responseStatus.await()
-                                            isLoading = false
-                                            if(response.isSuccessful){
-                                                Task_list_By_project = Task_list_By_project - elemento
-                                            }
-                                        } catch (e: java.net.ConnectException) {
-                                            println("Impossibile contattare il server")
-                                        } catch (e: java.io.IOException) {
-                                            println("Problema di connessione")
-                                        } catch (e: Exception) {
-                                            println("Errore sconosciuto $e")
-                                        }
-                                    }})
+                                        Task_list_By_project = Task_list_By_project - it
+                                    }, {isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
                                 }
                             }
                         }
                     }
                     if (isLoading) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = Color.Black.copy(alpha = 0.3f), // Grigio trasparente
-                            onClick = { /* Non fare nulla, serve a intercettare i click */ }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize() // Occupa tutto lo schermo
+                                .background(Color.Black.copy(alpha = 0.4f)) // Sfondo scuro e semitrasparente
+                                .clickable(enabled = false, onClick = {})
+                                .padding(paddingValues), // Blocca i click sullo sfondo
+                            contentAlignment = Alignment.Center // 2. Centra TUTTO il suo contenuto
                         ) {
-                            // Vuoto, serve solo per il colore
+                            // 3. Il CircularProgressIndicator ora verrà centrato da questo Box
+                            CircularProgressIndicator(
+                                color = Color.Magenta,
+                                strokeWidth = 5.dp // Aumentato leggermente per maggiore visibilità
+                            )
                         }
-
-                        // Il cerchio sopra lo sfondo scuro
-                        CircularProgressIndicator(
-                            color = Color.Magenta, // Colore del cerchio
-                            strokeWidth = 4.dp
+                    }
+                    if (showConnErrorDialog) {
+                        AlertDialog(
+                            onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+                            icon = { Image(
+                                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                                contentDescription = "Warning",
+                                modifier = Modifier.size(48.dp),
+                            ) },
+                            title = { Text("Problema di connessione") },
+                            text = { Text("Problema di connessione si prega di attendere e riprovare.") },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        // Chiudi il dialog e permetti all'utente di riprovare
+                                        showConnErrorDialog = false
+                                    }
+                                ) {
+                                    Text("Riprova")
+                                }
+                            },
+                            containerColor = Color.White,
+                            iconContentColor = MaterialTheme.colorScheme.error,
+                            titleContentColor = Color.Black
+                        )
+                    }
+                    if (isCompletedDialog) {
+                        AlertDialog(
+                            onDismissRequest = { isCompletedDialog = false },
+                            icon = { Image(
+                                painter = painterResource(id = R.drawable.check_mark_button_svgrepo_com),
+                                contentDescription = "Warning",
+                                modifier = Modifier.size(48.dp),
+                            ) },
+                            title = { Text("Success!") },
+                            text = { Text("Operazione avvenuta con successo!") },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        // Chiudi il dialog e permetti all'utente di riprovare
+                                        isCompleted = true
+                                        isCompletedDialog = false
+                                        if(tipo.equals("dipendente")) {
+                                            val intent = Intent(this, HomeDipendenteActivity::class.java)
+                                            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                            startActivity(intent)
+                                            finish()
+                                        }
+                                        else{
+                                            val intent = Intent(this, HomeManagerActivity::class.java)
+                                            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                            startActivity(intent)
+                                            finish()
+                                        }
+                                    }
+                                ) {
+                                    Text("OK")
+                                }
+                            },
+                            containerColor = Color.White,
+                            iconContentColor = MaterialTheme.colorScheme.error,
+                            titleContentColor = Color.Black
                         )
                     }
                 }
@@ -426,9 +567,81 @@ class ListViewer : ComponentActivity(){
 }
 
 @Composable
-fun TaskCompletata(task: Task, tipo: String?, token: String?, onDeleteRequest: () -> Unit){
+fun TaskCompletata(task: Task, tipo: String?, token: String?, onDeleteRequest: (Task) -> Unit, onLoadingChange: (Boolean) -> Unit, onErrorChange: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit, dipartimento: Int){
     val context = LocalContext.current
     var isExpanded by remember { mutableStateOf(false) }
+    var showConfirmationDialog by remember { mutableStateOf(false) }
+    val api = RetrofitInstance.api
+    val handler = CoroutineExceptionHandler { _, exception ->
+        println("Caught $exception")
+    }
+    val scope = rememberCoroutineScope()
+    if (showConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+            icon = { Image(
+                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                contentDescription = "Warning",
+                modifier = Modifier.size(48.dp),
+            ) },
+            title = { Text("Attenzione") },
+            text = { Text("Desideri davvero proseguire con l'eliminazione del seguente task?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmationDialog = false
+                        scope.launch(Dispatchers.IO + handler){
+                            try{
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(true)
+                                }
+                                val responseStatus = async{ api.deleteTask(mapOf<String, Any>("token" to token!!, "id" to task.id, "id_dipartimento" to dipartimento))}
+                                val response = responseStatus.await()
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(false)
+                                }
+                                if(response.isSuccessful){
+                                    withContext(Dispatchers.Main) {
+                                        onDeleteRequest(task)
+                                        isCompletedDialog(true)
+                                    }
+                                }
+                            } catch (e: java.net.ConnectException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorChange(true)
+                                }
+                            } catch (e: java.io.IOException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorChange(true)
+                                }
+                            } catch (e: Exception) {
+                                println("Errore sconosciuto $e")
+                            }finally {
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(false)
+                                }
+                            }
+                        }
+                    }
+                ) {
+                    Text("Conferma")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        // Chiudi il dialog e pulisci i campi
+                        showConfirmationDialog = false
+                    }
+                ) {
+                    Text("Annulla", color = Color.Red)
+                }
+            },
+            containerColor = Color.White,
+            iconContentColor = MaterialTheme.colorScheme.error,
+            titleContentColor = Color.Black
+        )
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -462,7 +675,7 @@ fun TaskCompletata(task: Task, tipo: String?, token: String?, onDeleteRequest: (
                 fontSize = 40.sp,
                 modifier = Modifier
                     .padding(start = 16.dp, end = 5.dp)
-                    .width(240.dp)
+                    .width(200.dp)
                 )
             IconButton(
                 modifier = Modifier.size(48.dp),
@@ -489,6 +702,7 @@ fun TaskCompletata(task: Task, tipo: String?, token: String?, onDeleteRequest: (
             DropdownMenu(
                 expanded = isExpanded,
                 onDismissRequest = { isExpanded = false },
+                offset = DpOffset(x = (160).dp, y = (0).dp)
             ){
                 DropdownMenuItem(
                     text = { Text("Info") },
@@ -509,7 +723,7 @@ fun TaskCompletata(task: Task, tipo: String?, token: String?, onDeleteRequest: (
                 DropdownMenuItem(
                     text = { Text("Elimina") },
                     onClick = {
-                        onDeleteRequest()
+                        showConfirmationDialog = true
                         isExpanded = false
                     }
                 )
@@ -520,9 +734,81 @@ fun TaskCompletata(task: Task, tipo: String?, token: String?, onDeleteRequest: (
 
 
 @Composable
-fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: () -> Unit, isSuspend: Boolean){
+fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: (Task) -> Unit, isSuspend: Boolean, onLoadingChange: (Boolean) -> Unit, onErrorChange: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit, dipartimento: Int){
     val context = LocalContext.current
     var isExpanded by remember { mutableStateOf(false) }
+    var showConfirmationDialog by remember { mutableStateOf(false) }
+    val api = RetrofitInstance.api
+    val handler = CoroutineExceptionHandler { _, exception ->
+        println("Caught $exception")
+    }
+    val scope = rememberCoroutineScope()
+    if (showConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+            icon = { Image(
+                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                contentDescription = "Warning",
+                modifier = Modifier.size(48.dp),
+            ) },
+            title = { Text("Attenzione") },
+            text = { Text("Desideri davvero proseguire con l'eliminazione del seguente task?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmationDialog = false
+                        scope.launch(Dispatchers.IO + handler){
+                            try{
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(true)
+                                }
+                                val responseStatus = async{ api.deleteTask(mapOf<String, Any>("token" to token!!, "id" to task.id, "id_dipartimento" to dipartimento))}
+                                val response = responseStatus.await()
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(false)
+                                }
+                                if(response.isSuccessful){
+                                    withContext(Dispatchers.Main) {
+                                        onDeleteRequest(task)
+                                        isCompletedDialog(true)
+                                    }
+                                }
+                            } catch (e: java.net.ConnectException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorChange(true)
+                                }
+                            } catch (e: java.io.IOException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorChange(true)
+                                }
+                            } catch (e: Exception) {
+                                println("Errore sconosciuto $e")
+                            }finally {
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(false)
+                                }
+                            }
+                        }
+                    }
+                ) {
+                    Text("Conferma")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        // Chiudi il dialog e pulisci i campi
+                        showConfirmationDialog = false
+                    }
+                ) {
+                    Text("Annulla", color = Color.Red)
+                }
+            },
+            containerColor = Color.White,
+            iconContentColor = MaterialTheme.colorScheme.error,
+            titleContentColor = Color.Black
+        )
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -555,7 +841,7 @@ fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: () -
                 fontSize = 40.sp,
                 modifier = Modifier
                     .padding(start = 16.dp, end = 5.dp)
-                    .width(240.dp)
+                    .width(200.dp)
             )
             IconButton(
                 modifier = Modifier.size(48.dp),
@@ -594,6 +880,7 @@ fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: () -
             DropdownMenu(
                 expanded = isExpanded,
                 onDismissRequest = { isExpanded = false },
+                offset = DpOffset(x = (160).dp, y = (0).dp)
             ){
                 DropdownMenuItem(
                     text = { Text("Info") },
@@ -614,7 +901,7 @@ fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: () -
                 DropdownMenuItem(
                     text = { Text("Elimina") },
                     onClick = {
-                        onDeleteRequest()
+                        showConfirmationDialog = true
                         isExpanded = false
                     }
                 )
@@ -624,9 +911,81 @@ fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: () -
 }
 
 @Composable
-fun TaskSospesa(task: Task, tipo: String?, token: String?, onDeleteRequest: () -> Unit){
+fun TaskSospesa(task: Task, tipo: String?, token: String?, onDeleteRequest: (Task) -> Unit, onLoadingChange: (Boolean) -> Unit, onErrorChange: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit, dipartimento: Int){
     val context = LocalContext.current
     var isExpanded by remember { mutableStateOf(false) }
+    var showConfirmationDialog by remember { mutableStateOf(false) }
+    val api = RetrofitInstance.api
+    val handler = CoroutineExceptionHandler { _, exception ->
+        println("Caught $exception")
+    }
+    val scope = rememberCoroutineScope()
+    if (showConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+            icon = { Image(
+                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                contentDescription = "Warning",
+                modifier = Modifier.size(48.dp),
+            ) },
+            title = { Text("Attenzione") },
+            text = { Text("Desideri davvero proseguire con l'eliminazione del seguente task?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmationDialog = false
+                        scope.launch(Dispatchers.IO + handler){
+                            try{
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(true)
+                                }
+                                val responseStatus = async{ api.deleteTask(mapOf<String, Any>("token" to token!!, "id" to task.id, "id_dipartimento" to dipartimento))}
+                                val response = responseStatus.await()
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(false)
+                                }
+                                if(response.isSuccessful){
+                                    withContext(Dispatchers.Main) {
+                                        onDeleteRequest(task)
+                                        isCompletedDialog(true)
+                                    }
+                                }
+                            } catch (e: java.net.ConnectException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorChange(true)
+                                }
+                            } catch (e: java.io.IOException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorChange(true)
+                                }
+                            } catch (e: Exception) {
+                                println("Errore sconosciuto $e")
+                            }finally {
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(false)
+                                }
+                            }
+                        }
+                    }
+                ) {
+                    Text("Conferma")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        // Chiudi il dialog e pulisci i campi
+                        showConfirmationDialog = false
+                    }
+                ) {
+                    Text("Annulla", color = Color.Red)
+                }
+            },
+            containerColor = Color.White,
+            iconContentColor = MaterialTheme.colorScheme.error,
+            titleContentColor = Color.Black
+        )
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -659,7 +1018,7 @@ fun TaskSospesa(task: Task, tipo: String?, token: String?, onDeleteRequest: () -
                 fontSize = 40.sp,
                 modifier = Modifier
                     .padding(start = 16.dp, end = 5.dp)
-                    .width(240.dp)
+                    .width(200.dp)
             )
             IconButton(
                 modifier = Modifier.size(48.dp),
@@ -686,6 +1045,7 @@ fun TaskSospesa(task: Task, tipo: String?, token: String?, onDeleteRequest: () -
             DropdownMenu(
                 expanded = isExpanded,
                 onDismissRequest = { isExpanded = false },
+                offset = DpOffset(x = (160).dp, y = (0).dp)
             ){
                 DropdownMenuItem(
                     text = { Text("Info") },
@@ -706,7 +1066,7 @@ fun TaskSospesa(task: Task, tipo: String?, token: String?, onDeleteRequest: () -
                 DropdownMenuItem(
                     text = { Text("Elimina") },
                     onClick = {
-                        onDeleteRequest()
+                        showConfirmationDialog = true
                         isExpanded = false
                     }
                 )
@@ -717,9 +1077,81 @@ fun TaskSospesa(task: Task, tipo: String?, token: String?, onDeleteRequest: () -
 }
 
 @Composable
-fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: String?, tipo: String?, dipartimento: Int?, onDeleteRequest: () -> Unit, adding: Boolean, is_suspend: Boolean){
+fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: String?, tipo: String?, dipartimento: Int?, onDeleteRequest: (Progetto) -> Unit, adding: Boolean, is_suspend: Boolean, onLoadingChange: (Boolean) -> Unit, onErrorChange: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit){
     var isExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    var showConfirmationDialog by remember { mutableStateOf(false) }
+    val api = RetrofitInstance.api
+    val handler = CoroutineExceptionHandler { _, exception ->
+        println("Caught $exception")
+    }
+    val scope = rememberCoroutineScope()
+    if (showConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+            icon = { Image(
+                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                contentDescription = "Warning",
+                modifier = Modifier.size(48.dp),
+            ) },
+            title = { Text("Attenzione") },
+            text = { Text("Desideri davvero proseguire con l'eliminazione del seguente progetto?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmationDialog = false
+                        scope.launch(Dispatchers.IO + handler){
+                            try{
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(true)
+                                }
+                                val responseStatus = async{ api.deleteProject(mapOf<String, Any>("token" to token!!, "id_progetto" to progetto.id_progetto, "id_dipartimento" to dipartimento!!))}
+                                val response = responseStatus.await()
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(false)
+                                }
+                                if(response.isSuccessful){
+                                    withContext(Dispatchers.Main){
+                                        onDeleteRequest(progetto)
+                                        isCompletedDialog(true)
+                                    }
+                                }
+                            } catch (e: java.net.ConnectException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorChange(true)
+                                }
+                            } catch (e: java.io.IOException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorChange(true)
+                                }
+                            } catch (e: Exception) {
+                                println("Errore sconosciuto $e")
+                            }finally {
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(false)
+                                }
+                            }
+                        }
+                    }
+                ) {
+                    Text("Conferma")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        // Chiudi il dialog e pulisci i campi
+                        showConfirmationDialog = false
+                    }
+                ) {
+                    Text("Annulla", color = Color.Red)
+                }
+            },
+            containerColor = Color.White,
+            iconContentColor = MaterialTheme.colorScheme.error,
+            titleContentColor = Color.Black
+        )
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -746,11 +1178,21 @@ fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: St
                 modifier = Modifier
                     .size(48.dp)
             )
-            Text(progetto.nome)
+            Text(progetto.nome,
+                fontFamily = computerSaysNo,
+                fontWeight = FontWeight.W400,
+                fontSize = 40.sp,
+                modifier = Modifier
+                    .padding(start = 16.dp, end = 5.dp)
+                    .width(200.dp)
+            )
             IconButton(
                 modifier = Modifier.size(48.dp),
                 onClick = {
                     if(adding){
+                        val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+                            .adapter(Progetto::class.java)
+                        val gson = moshi.toJson(progetto)
                         val addTaskIntent = Intent(context, Adder::class.java)
                         addTaskIntent.putExtra("type", "taskAdder")
                         addTaskIntent.putExtra("token", token)
@@ -758,6 +1200,8 @@ fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: St
                         addTaskIntent.putExtra("id_dipartimento", dipartimento)
                         addTaskIntent.putExtra("id_progetto", progetto.id_progetto)
                         addTaskIntent.putExtra("nome_progetto", progetto.nome)
+                        addTaskIntent.putExtra("progetto", gson)
+
                         context.startActivity(addTaskIntent)
 
                     }
@@ -782,6 +1226,7 @@ fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: St
             DropdownMenu(
                 expanded = isExpanded,
                 onDismissRequest = { isExpanded = false },
+                offset = DpOffset(x = (160).dp, y = (0).dp)
             ) {
                 if (type.equals("ProgettiByMGR") && progetto.Dipartimento_id_dipartimento != dipartimento) {
                     DropdownMenuItem(
@@ -830,7 +1275,7 @@ fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: St
                 DropdownMenuItem(
                     text = { Text("Elimina") },
                     onClick = {
-                        onDeleteRequest()
+                        showConfirmationDialog = true
                         isExpanded = false
                     }
                 )
@@ -890,10 +1335,23 @@ fun DipendenteElement(d: Dipendente){
                 modifier = Modifier
                     .width(260.dp)
                     .fillMaxHeight()
-
             ) {
-                Text("${d.nome} ${d.cognome}")
-                Text(d.email)
+                Text("${d.nome} ${d.cognome}",
+                    fontFamily = computerSaysNo,
+                    fontWeight = FontWeight.W400,
+                    fontSize = 40.sp,
+                    modifier = Modifier
+                        .padding(start = 16.dp, end = 5.dp)
+                        .width(300.dp)
+                )
+                Text("${d.email}",
+                    fontFamily = computerSaysNo,
+                    fontWeight = FontWeight.W400,
+                    fontSize = 25.sp,
+                    modifier = Modifier
+                        .padding(start = 16.dp, end = 5.dp)
+                        .width(300.dp)
+                )
             }
             IconButton(
                 modifier = Modifier
@@ -909,20 +1367,22 @@ fun DipendenteElement(d: Dipendente){
                 expanded = isPopupVisible,
                 onDismissRequest = { isPopupVisible = false },
                 // 5. Usa l'offset per posizionare il popup vicino al bottone
-                offset = DpOffset(x = (-42).dp, y = (-10).dp),
+                offset = DpOffset(x = (160).dp, y = (0).dp),
                 modifier = Modifier.background(Color.White, RoundedCornerShape(16.dp))
             ) {
                 // 6. Contenuto personalizzato del popup
                 Box(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier
+                        .padding(16.dp)
                         .background(Color.Transparent, RoundedCornerShape(16.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "Tel: ${d.numero_telefono}", // Assumendo che 'd' abbia un campo 'telefono'
                         fontFamily = computerSaysNo,
-                        fontSize = 20.sp,
-                        color = Color.Black
+                        fontSize = 40.sp,
+                        color = Color.Black,
+                        modifier = Modifier.background(Color.White,RoundedCornerShape(16.dp))
                     )
                 }
             }

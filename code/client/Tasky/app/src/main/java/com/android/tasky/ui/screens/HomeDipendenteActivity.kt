@@ -10,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -188,7 +189,7 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                         painter = painterResource(id = R.drawable.taskyfinalnobackground),
                         contentDescription = "Logo Tasky",
                         modifier = Modifier
-                            .size(70.dp)
+                            .size(74.dp)
                     )
                 }
             },
@@ -411,6 +412,16 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                                     shape = RoundedCornerShape(34
                                     )
                                 )
+                                .clickable(
+                                    onClick = {
+                                        val taskIntent = Intent(context, ListViewer::class.java)
+                                        taskIntent.putExtra("token",token)
+                                        taskIntent.putExtra("email", email)
+                                        taskIntent.putExtra("type", "task_completati")
+                                        taskIntent.putExtra("tipo", tipo)
+                                        context.startActivity(taskIntent)
+                                    }
+                                )
                         ){
                             Column (
                                 modifier = Modifier.fillMaxSize(),
@@ -425,6 +436,7 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                                     modifier = Modifier
                                         .width(130.dp)
                                 )
+                                Spacer(Modifier.height(15.dp))
                                 Image(
                                     painter = painterResource(id = R.drawable.check_mark_button_svgrepo_com),
                                     contentDescription = "Mark Check",
@@ -432,32 +444,6 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                                         .size(32.dp)
 
                                 )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End,
-                                    verticalAlignment = Alignment.Bottom
-                                ){
-                                    IconButton(
-                                        onClick = {
-                                            val taskIntent = Intent(context, ListViewer::class.java)
-                                            taskIntent.putExtra("token",token)
-                                            taskIntent.putExtra("email", email)
-                                            taskIntent.putExtra("type", "task_completati")
-                                            taskIntent.putExtra("tipo", tipo)
-                                            context.startActivity(taskIntent)
-                                        },
-
-
-                                        ) {
-                                        Image(
-                                            painter = painterResource(id = R.drawable.next_arrow_forward_svgrepo_com),
-                                            contentDescription = "ArrowForward",
-                                            modifier = Modifier
-                                                .size(48.dp)
-                                        )
-                                    }
-                                    Spacer(Modifier.padding(end = 10.dp))
-                                }
                             }
                         }
                         Spacer(Modifier.width(30.dp))
@@ -476,6 +462,16 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                                     shape = RoundedCornerShape(34
                                     )
                                 )
+                                .clickable(
+                                    onClick = {
+                                        val taskIntent = Intent(context, ListViewer::class.java)
+                                        taskIntent.putExtra("token",token)
+                                        taskIntent.putExtra("email", email)
+                                        taskIntent.putExtra("type", "task_sospesi")
+                                        taskIntent.putExtra("tipo", tipo)
+                                        context.startActivity(taskIntent)
+                                    }
+                                )
                         ){
                             Column (
                                 modifier = Modifier.fillMaxSize(),
@@ -490,38 +486,13 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                                     modifier = Modifier
                                         .width(130.dp)
                                 )
+                                Spacer(Modifier.height(15.dp))
                                 Image(
                                     painter = painterResource(id = R.drawable.red_exclamation_mark_svgrepo_com),
                                     contentDescription = "Exclamation Mark",
                                     modifier = Modifier
                                         .size(32.dp)
                                 )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End,
-                                    verticalAlignment = Alignment.Bottom
-                                ){
-                                    IconButton(
-                                        onClick = {
-                                            val taskIntent = Intent(context, ListViewer::class.java)
-                                            taskIntent.putExtra("token",token)
-                                            taskIntent.putExtra("email", email)
-                                            taskIntent.putExtra("type", "task_sospesi")
-                                            taskIntent.putExtra("tipo", tipo)
-                                            context.startActivity(taskIntent)
-                                        },
-
-
-                                        ) {
-                                        Image(
-                                            painter = painterResource(id = R.drawable.next_arrow_forward_svgrepo_com),
-                                            contentDescription = "ArrowForward",
-                                            modifier = Modifier
-                                                .size(48.dp)
-                                        )
-                                    }
-                                    Spacer(Modifier.padding(end = 10.dp))
-                                }
                             }
                         }
                     }

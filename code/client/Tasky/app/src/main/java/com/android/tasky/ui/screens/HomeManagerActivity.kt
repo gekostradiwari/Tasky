@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -171,7 +172,7 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                         painter = painterResource(id = R.drawable.taskyfinalnobackground),
                         contentDescription = "Logo Tasky",
                         modifier = Modifier
-                            .size(48.dp)
+                            .size(74.dp)
                     )
                 }
             },
@@ -574,6 +575,19 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                                     ),
                                     shape = RoundedCornerShape(34)
                                 )
+                                .clickable(
+                                    onClick = {
+                                        val listProgettiIntent = Intent(context, ListViewer::class.java)
+                                        listProgettiIntent.putExtra("token", token)
+                                        listProgettiIntent.putExtra("dipartimento", id_dipartimento)
+                                        listProgettiIntent.putExtra("email", email)
+                                        listProgettiIntent.putExtra("type", "progetti")
+                                        listProgettiIntent.putExtra("tipo", "manager")
+                                        listProgettiIntent.putExtra("adding",true)
+                                        context.startActivity(listProgettiIntent)
+                                    }
+
+                                )
                         ){
                             Column (
                                 modifier = Modifier.fillMaxSize(),
@@ -588,39 +602,13 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                                     modifier = Modifier
                                         .width(130.dp)
                                 )
+                                Spacer(Modifier.height(15.dp))
                                 Image(
                                     painter = painterResource(id = R.drawable.puzzle_piece_svgrepo_com),
                                     contentDescription = "Puzzle",
                                     modifier = Modifier
                                         .size(32.dp)
                                 )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End,
-                                    verticalAlignment = Alignment.Bottom
-                                ){
-                                    IconButton(
-                                        onClick = {
-                                            val listProgettiIntent = Intent(context, ListViewer::class.java)
-                                            listProgettiIntent.putExtra("token", token)
-                                            listProgettiIntent.putExtra("dipartimento", id_dipartimento)
-                                            listProgettiIntent.putExtra("email", email)
-                                            listProgettiIntent.putExtra("type", "progetti")
-                                            listProgettiIntent.putExtra("tipo", "manager")
-                                            listProgettiIntent.putExtra("adding",true)
-                                            context.startActivity(listProgettiIntent)
-                                        },
-
-                                        ) {
-                                        Image(
-                                            painter = painterResource(id = R.drawable.next_arrow_forward_svgrepo_com),
-                                            contentDescription = "ArrowForward",
-                                            modifier = Modifier
-                                                .size(48.dp)
-                                        )
-                                    }
-                                    Spacer(Modifier.padding(end = 10.dp))
-                                }
                             }
                         }
                         Spacer(Modifier.width(30.dp))
@@ -638,6 +626,18 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                                     ),
                                     shape = RoundedCornerShape(34)
                                 )
+                                .clickable(
+                                    onClick ={
+                                        val listProgettiIntent = Intent(context, ListViewer::class.java)
+                                        listProgettiIntent.putExtra("token", token)
+                                        listProgettiIntent.putExtra("dipartimento", id_dipartimento)
+                                        listProgettiIntent.putExtra("email", email)
+                                        listProgettiIntent.putExtra("type", "progetti")
+                                        listProgettiIntent.putExtra("tipo", "manager")
+                                        listProgettiIntent.putExtra("suspend",true)
+                                        context.startActivity(listProgettiIntent)
+                                    }
+                                )
                         ){
                             Column (
                                 modifier = Modifier.fillMaxSize(),
@@ -652,40 +652,13 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                                     modifier = Modifier
                                         .width(130.dp)
                                 )
+                                Spacer(Modifier.height(15.dp))
                                 Image(
                                     painter = painterResource(id = R.drawable.exclamation_question_mark_svgrepo_com),
                                     contentDescription = "task suspend",
                                     modifier = Modifier
                                         .size(32.dp)
                                 )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End,
-                                    verticalAlignment = Alignment.Bottom
-                                ){
-                                    IconButton(
-                                        onClick = {
-                                            val listProgettiIntent = Intent(context, ListViewer::class.java)
-                                            listProgettiIntent.putExtra("token", token)
-                                            listProgettiIntent.putExtra("dipartimento", id_dipartimento)
-                                            listProgettiIntent.putExtra("email", email)
-                                            listProgettiIntent.putExtra("type", "progetti")
-                                            listProgettiIntent.putExtra("tipo", "manager")
-                                            listProgettiIntent.putExtra("suspend",true)
-                                            context.startActivity(listProgettiIntent)
-                                        },
-
-
-                                        ) {
-                                        Image(
-                                            painter = painterResource(id = R.drawable.next_arrow_forward_svgrepo_com),
-                                            contentDescription = "ArrowForward",
-                                            modifier = Modifier
-                                                .size(48.dp)
-                                        )
-                                    }
-                                    Spacer(Modifier.padding(end = 10.dp))
-                                }
                             }
                         }
                     }
