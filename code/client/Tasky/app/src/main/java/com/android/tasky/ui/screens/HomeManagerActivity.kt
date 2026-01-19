@@ -7,21 +7,29 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
@@ -46,8 +54,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -118,6 +129,28 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    val interactionSourceDipartimento = remember { MutableInteractionSource() }
+    val isPressedDipartimento by interactionSourceDipartimento.collectIsPressedAsState()
+    val scaleDipartimento by animateFloatAsState(if (isPressedDipartimento) 0.95f else 1f)
+
+    val interactionSourceAddProgetto = remember { MutableInteractionSource() }
+    val isPressedAddProgetto by interactionSourceAddProgetto.collectIsPressedAsState()
+    val scaleAddProgetto by animateFloatAsState(if (isPressedAddProgetto) 0.95f else 1f)
+
+    val interactionSourceProgetti = remember { MutableInteractionSource() }
+    val isPressedProgetti by interactionSourceProgetti.collectIsPressedAsState()
+    val scaleProgetti by animateFloatAsState(if (isPressedProgetti) 0.95f else 1f)
+
+    val interactionSourceAddTask = remember { MutableInteractionSource() }
+    val isPressedAddTask by interactionSourceAddTask.collectIsPressedAsState()
+    val scaleAddTask by animateFloatAsState(if (isPressedAddTask) 0.95f else 1f)
+
+    val interactionSourceSuspendTask = remember { MutableInteractionSource() }
+    val isPressedSuspendTask by interactionSourceSuspendTask.collectIsPressedAsState()
+    val scaleSuspendTask by animateFloatAsState(if (isPressedSuspendTask) 0.95f else 1f)
+
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -146,7 +179,8 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
         Scaffold(
             topBar = {
                 Row(
-                    modifier = Modifier.height(70.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .background(brush = Brush.horizontalGradient(
                             colors = listOf(
                                 Color("#D06FCA".toColorInt()),
@@ -160,7 +194,8 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                                 )
                         )
                         )
-                        .fillMaxWidth(),
+                        .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
+                        .height(70.dp),
                     horizontalArrangement = Arrangement.spacedBy(125.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -204,7 +239,7 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                                 brush = Brush.horizontalGradient(
                                     colors = listOf(
                                         Color("#FF07F0".toColorInt()),
-                                        Color("#D06FCA".toColorInt()).copy(alpha = 0.5f),
+                                        lerp(Color("#D06FCA".toColorInt()), Color.White, 0.5f)
                                     )
                                 ),
                                 shape = RoundedCornerShape(34)
@@ -247,52 +282,46 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
+                            .scale(scaleDipartimento)
+                            .shadow(18.dp, RoundedCornerShape(34))
                             .width(358.dp)
                             .height(160.dp)
                             .background(
                                 brush = Brush.verticalGradient(
                                     colors = listOf(
-                                        Color("#7B6FE9".toColorInt()).copy(alpha = 0.2f),
+                                        lerp(Color("#7B6FE9".toColorInt()), Color.White, 0.7f),
                                         Color("#866FE5".toColorInt()),
                                     )
                                 ),
                                 shape = RoundedCornerShape(34)
                             )
+                            .clickable(
+                                interactionSource = interactionSourceDipartimento,
+                                indication = null,
+                                onClick = {
+                                    val departmentIntent = Intent(context, DepartmentActivity::class.java)
+                                    departmentIntent.putExtra("token", token)
+                                    departmentIntent.putExtra("email", email)
+                                    departmentIntent.putExtra("id_dipartimento", id_dipartimento)
+                                    departmentIntent.putExtra("nome_dipartimento", nome_dipartimento)
+                                    context.startActivity(departmentIntent)
+                                }
+                            )
                     ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Spacer(Modifier.padding(top = 30.dp))
                             Row(
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth()
                             ){
-                                Column(
-                                    verticalArrangement = Arrangement.Center,
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
-
-                                    Text("Dipartimento",
-                                        textAlign = TextAlign.Center,
-                                        fontFamily = computerSaysNo,
-                                        fontWeight = FontWeight.W400,
-                                        fontSize = 40.sp,
-                                        modifier = Modifier
-                                            .width(170.dp)
-                                            )
-                                    Text("$nome_dipartimento",
+                                    Text("Dipartimento\n$nome_dipartimento",
                                         textAlign = TextAlign.Center,
                                         fontFamily = computerSaysNo,
                                         fontWeight = FontWeight.W400,
                                         fontSize = 40.sp,
                                         modifier = Modifier
                                             .width(270.dp)
+                                            .padding(start = 27.dp)
                                             )
-
-                                }
                                 Image(
                                     painter = painterResource(id = R.drawable.office_building_svgrepo_com),
                                     contentDescription = "Department",
@@ -301,48 +330,34 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                                 )
 
                             }
-                            Row(
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.height(50.dp)
-                            ){
-                                Spacer(Modifier.padding(start = 270.dp))
-                                IconButton(
-                                    onClick = {
-                                        val departmentIntent = Intent(context, DepartmentActivity::class.java)
-                                        departmentIntent.putExtra("token", token)
-                                        departmentIntent.putExtra("email", email)
-                                        departmentIntent.putExtra("id_dipartimento", id_dipartimento)
-                                        departmentIntent.putExtra("nome_dipartimento", nome_dipartimento)
-                                        context.startActivity(departmentIntent)
-
-                                    },
-                                    ) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.next_arrow_forward_svgrepo_com),
-                                        contentDescription = "ArrowForward",
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                    )
-                                }
-
-                            }
-
-                        }
                     }
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
+                            .scale(scaleAddProgetto)
+                            .shadow(18.dp, RoundedCornerShape(34))
                             .width(358.dp)
                             .height(120.dp)
                             .background(
                                 brush = Brush.horizontalGradient(
                                     colors = listOf(
                                         Color("#97C65C".toColorInt()),
-                                        Color("#96FF13".toColorInt()).copy(alpha = 0.5f),
+                                        lerp(Color("#96FF13".toColorInt()), Color.White, 0.5f),
                                     )
                                 ),
                                 shape = RoundedCornerShape(34)
+                            )
+                            .clickable(
+                                interactionSource = interactionSourceAddProgetto,
+                                indication = null,
+                                onClick = {
+                                    val addProjectIntent = Intent(context, Adder::class.java)
+                                    addProjectIntent.putExtra("type", "projectAdder")
+                                    addProjectIntent.putExtra("token", token)
+                                    addProjectIntent.putExtra("id_dipartimento", id_dipartimento)
+                                    context.startActivity(addProjectIntent)
+                                }
+
                             )
                     ) {
                         Row(
@@ -351,13 +366,13 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                             verticalAlignment = Alignment.CenterVertically
                         ){
                             Spacer(Modifier.padding(start = 65.dp))
-                            Text("Aggiungi Progetto",
+                            Text("Aggiungi\nProgetto",
                                 textAlign = TextAlign.Center,
                                 fontFamily = computerSaysNo,
                                 fontWeight = FontWeight.W400,
                                 fontSize = 40.sp,
                                 modifier = Modifier
-                                    .width(130.dp)
+                                    .width(230.dp)
                             )
                             Image(
                                 painter = painterResource(id = R.drawable.triangular_ruler_svgrepo_com),
@@ -366,34 +381,6 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                                     .size(48.dp)
                             )
                             Spacer(Modifier.padding(end = 30.dp))
-
-                            Column(
-                                modifier = Modifier.fillMaxHeight(),
-                                horizontalAlignment = Alignment.End,
-                                verticalArrangement = Arrangement.Bottom
-                            ){
-                                IconButton(
-                                    onClick = {
-                                        val addProjectIntent = Intent(context, Adder::class.java)
-                                        addProjectIntent.putExtra("type", "projectAdder")
-                                        addProjectIntent.putExtra("token", token)
-                                        addProjectIntent.putExtra("id_dipartimento", id_dipartimento)
-                                        context.startActivity(addProjectIntent)
-                                    },
-
-
-                                    ) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.next_arrow_forward_svgrepo_com),
-                                        contentDescription = "ArrowForward",
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                    )
-                                }
-                                Spacer(Modifier.padding(top = 10.dp))
-
-                            }
-
                         }
                         /*Column(
 
@@ -446,16 +433,31 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
+                            .scale(scaleProgetti)
+                            .shadow(18.dp, RoundedCornerShape(34))
                             .width(358.dp)
                             .height(100.dp)
                             .background(
                                 brush = Brush.verticalGradient(
                                     colors = listOf(
                                         Color("#A56FD9".toColorInt()),
-                                        Color("#D06FCA".toColorInt()).copy(alpha = 0.5f),
+                                        lerp(Color("#D06FCA".toColorInt()), Color.White, 0.5f),
                                     )
                                 ),
                                 shape = RoundedCornerShape(34)
+                            )
+                            .clickable(
+                                interactionSource = interactionSourceProgetti,
+                                indication = null,
+                                onClick = {
+                                    val listProgettiByMGRIntent = Intent(context, ListViewer::class.java)
+                                    listProgettiByMGRIntent.putExtra("token", token)
+                                    listProgettiByMGRIntent.putExtra("dipartimento", id_dipartimento)
+                                    listProgettiByMGRIntent.putExtra("email", email)
+                                    listProgettiByMGRIntent.putExtra("type", "ProgettiByMGR")
+                                    listProgettiByMGRIntent.putExtra("tipo", "manager")
+                                    context.startActivity(listProgettiByMGRIntent)
+                                }
                             )
                     ) {
                         Row(
@@ -470,7 +472,7 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                                 fontWeight = FontWeight.W400,
                                 fontSize = 40.sp,
                                 modifier = Modifier
-                                    .width(130.dp)
+                                    .width(225.dp)
                             )
                             Image(
                                 painter = painterResource(id = R.drawable.briefcase_svgrepo_com),
@@ -480,34 +482,6 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                             )
                             Spacer(Modifier.padding(end = 30.dp))
 
-                            Column(
-                                modifier = Modifier.fillMaxHeight(),
-                                horizontalAlignment = Alignment.End,
-                                verticalArrangement = Arrangement.Bottom
-                            ){
-                                IconButton(
-                                    onClick = {
-                                        val listProgettiByMGRIntent = Intent(context, ListViewer::class.java)
-                                        listProgettiByMGRIntent.putExtra("token", token)
-                                        listProgettiByMGRIntent.putExtra("dipartimento", id_dipartimento)
-                                        listProgettiByMGRIntent.putExtra("email", email)
-                                        listProgettiByMGRIntent.putExtra("type", "ProgettiByMGR")
-                                        listProgettiByMGRIntent.putExtra("tipo", "manager")
-                                        context.startActivity(listProgettiByMGRIntent)
-                                    },
-
-
-                                    ) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.next_arrow_forward_svgrepo_com),
-                                        contentDescription = "ArrowForward",
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                    )
-                                }
-                                Spacer(Modifier.padding(top = 7.dp))
-
-                            }
 
                         }
                         /*Column(
@@ -564,6 +538,8 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
+                                .scale(scaleAddTask)
+                                .shadow(18.dp, RoundedCornerShape(34))
                                 .width(160.dp)
                                 .height(161.dp)
                                 .background(
@@ -576,6 +552,8 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                                     shape = RoundedCornerShape(34)
                                 )
                                 .clickable(
+                                    interactionSource = interactionSourceAddTask,
+                                    indication = null,
                                     onClick = {
                                         val listProgettiIntent = Intent(context, ListViewer::class.java)
                                         listProgettiIntent.putExtra("token", token)
@@ -615,6 +593,8 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
+                                .scale(scaleSuspendTask)
+                                .shadow(18.dp, RoundedCornerShape(34))
                                 .width(160.dp)
                                 .height(161.dp)
                                 .background(
@@ -627,6 +607,8 @@ fun HomeManagerActivityPreview(token:String?, sesso:String?, id_dipartimento:Int
                                     shape = RoundedCornerShape(34)
                                 )
                                 .clickable(
+                                    interactionSource = interactionSourceSuspendTask,
+                                    indication = null,
                                     onClick ={
                                         val listProgettiIntent = Intent(context, ListViewer::class.java)
                                         listProgettiIntent.putExtra("token", token)

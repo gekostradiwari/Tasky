@@ -6,20 +6,28 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,10 +39,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -56,11 +69,19 @@ class DepartmentActivity : ComponentActivity() {
         val nome_dipartimento = intent.getStringExtra("nome_dipartimento")
         setContent {
             val context = LocalContext.current
+
+            val interactionSourceMembri = remember { MutableInteractionSource() }
+            val isPressedMembri by interactionSourceMembri.collectIsPressedAsState()
+            val scaleMembri by animateFloatAsState(if (isPressedMembri) 0.95f else 1f)
+
+            val interactionSourceProgetti = remember { MutableInteractionSource() }
+            val isPressedProgetti by interactionSourceProgetti.collectIsPressedAsState()
+            val scaleProgetti by animateFloatAsState(if (isPressedProgetti) 0.95f else 1f)
+
             Scaffold(
                 topBar = {
                     Row(
                         modifier = Modifier
-                            .height(70.dp)
                             .fillMaxWidth()
                             .background(
                                 brush = Brush.horizontalGradient(
@@ -76,7 +97,9 @@ class DepartmentActivity : ComponentActivity() {
                                     )
 
                                 )
-                            ),
+                            )
+                            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
+                            .height(70.dp),
                         horizontalArrangement = Arrangement.spacedBy(125.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -117,6 +140,7 @@ class DepartmentActivity : ComponentActivity() {
                         )
                         Spacer(Modifier.padding(top = 100.dp))
                         Button(
+                            interactionSource = interactionSourceMembri,
                             onClick = {
                                 val listMembriIntent = Intent(context, ListViewer::class.java)
                                 listMembriIntent.putExtra("token", token)
@@ -127,8 +151,10 @@ class DepartmentActivity : ComponentActivity() {
                                 context.startActivity(listMembriIntent)
                             },
                             modifier = Modifier
+                                .shadow(18.dp, RoundedCornerShape(34))
                                 .width(327.dp)
-                                .height(155.dp),
+                                .height(155.dp)
+                                .scale(scaleMembri),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color.Transparent
                             ),
@@ -144,7 +170,7 @@ class DepartmentActivity : ComponentActivity() {
                                         brush = Brush.verticalGradient(
                                             colors = listOf(
                                                 Color("#7B6FE9".toColorInt()),
-                                                Color("#7B6FE9".toColorInt()).copy(alpha = 0.2f),
+                                                lerp(Color("#7B6FE9".toColorInt()), Color.White, 0.6f),
                                             )
                                         ),
                                         shape = RoundedCornerShape(34)
@@ -198,6 +224,7 @@ class DepartmentActivity : ComponentActivity() {
                         Spacer(Modifier.padding(top = 30.dp))
 
                         Button(
+                            interactionSource = interactionSourceProgetti,
                             onClick = {
                                 val listProgettiIntent = Intent(context, ListViewer::class.java)
                                 listProgettiIntent.putExtra("token", token)
@@ -208,6 +235,8 @@ class DepartmentActivity : ComponentActivity() {
                                 context.startActivity(listProgettiIntent)
                             },
                             modifier = Modifier
+                                .scale(scaleProgetti)
+                                .shadow(18.dp, RoundedCornerShape(34))
                                 .width(327.dp)
                                 .height(155.dp),
                             colors = ButtonDefaults.buttonColors(
@@ -225,7 +254,7 @@ class DepartmentActivity : ComponentActivity() {
                                         brush = Brush.verticalGradient(
                                             colors = listOf(
                                                 Color("#7B6FE9".toColorInt()),
-                                                Color("#7B6FE9".toColorInt()).copy(alpha = 0.2f),
+                                                lerp(Color("#7B6FE9".toColorInt()), Color.White, 0.6f),
                                             )
                                         ),
                                         shape = RoundedCornerShape(34)

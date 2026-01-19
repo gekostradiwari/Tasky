@@ -7,25 +7,33 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.absolutePadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fitInside
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -54,9 +62,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -134,6 +145,20 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    val interactionSourceCompletati = remember { MutableInteractionSource() }
+    val isPressedCompletati by interactionSourceCompletati.collectIsPressedAsState()
+    val scaleCompletati by animateFloatAsState(if (isPressedCompletati) 0.95f else 1f)
+
+    val interactionSourceSospesi = remember { MutableInteractionSource() }
+    val isPressedSospesi by interactionSourceSospesi.collectIsPressedAsState()
+    val scaleSospesi by animateFloatAsState(if (isPressedSospesi) 0.95f else 1f)
+
+    val interactionSourceInCorso = remember { MutableInteractionSource() }
+    val isPressedInCorso by interactionSourceInCorso.collectIsPressedAsState()
+    val scaleInCorso by animateFloatAsState(if (isPressedInCorso) 0.95f else 1f)
+
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -163,7 +188,7 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
         Scaffold(
             topBar = {
                 Row(
-                    modifier = Modifier.height(70.dp)
+                    modifier = Modifier
                         .fillMaxWidth()
                         .background(brush = Brush.horizontalGradient(
                             colors = listOf(
@@ -177,7 +202,9 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                                 Color("#7B6FE9".toColorInt())
                             )
 
-                        )),
+                        ))
+                        .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
+                        .height(70.dp),
                     horizontalArrangement = Arrangement.spacedBy(125.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -217,11 +244,12 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                                 brush = Brush.horizontalGradient(
                                     colors = listOf(
                                         Color("#FF07F0".toColorInt()),
-                                        Color("#D06FCA".toColorInt()).copy(0.5f),
+                                        lerp(Color("#D06FCA".toColorInt()), Color.White, 0.5f)
                                     ),
                                 ),
                                 shape = RoundedCornerShape(34)
                             )
+
                     ) {
                         Row(
                             modifier = Modifier.fillMaxSize(),
@@ -264,7 +292,8 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                             .background(
                                 brush = Brush.verticalGradient(
                                     colors = listOf(
-                                        Color("#7B6FE9".toColorInt()).copy(0.2f),
+                                        lerp(Color("#7B6FE9".toColorInt()), Color.White, 0.7f),
+                                        //Color("#7B6FE9".toColorInt()).copy(0.2f),
                                         Color("#866FE5".toColorInt())
                                     ),
                                 ),
@@ -325,6 +354,8 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
+                            .scale(scaleInCorso)
+                            .shadow(18.dp, RoundedCornerShape(34))
                             .width(358.dp)
                             .height(161.dp)
                             .background(
@@ -336,6 +367,19 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                                 ),
                                 shape = RoundedCornerShape(34
                                 )
+                            )
+                            .clickable(
+                                interactionSource = interactionSourceInCorso,
+                                indication = null,
+                                onClick = {
+                                    val taskIntent = Intent(context, ListViewer::class.java)
+                                    println("Emaila HomeDipendente $email")
+                                    taskIntent.putExtra("token",token)
+                                    taskIntent.putExtra("email", email)
+                                    taskIntent.putExtra("type", "task_in_corso")
+                                    taskIntent.putExtra("tipo", tipo)
+                                    context.startActivity(taskIntent)
+                                }
                             )
                     ) {
                         Row(
@@ -358,37 +402,6 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                                 modifier = Modifier
                                     .size(48.dp)
                             )
-
-
-                            Column(
-                                modifier = Modifier.fillMaxHeight(),
-                                horizontalAlignment = Alignment.End,
-                                verticalArrangement = Arrangement.Bottom
-                            ){
-                                IconButton(
-                                    onClick = {
-                                        val taskIntent = Intent(context, ListViewer::class.java)
-                                        println("Emaila HomeDipendente $email")
-                                        taskIntent.putExtra("token",token)
-                                        taskIntent.putExtra("email", email)
-                                        taskIntent.putExtra("type", "task_in_corso")
-                                        taskIntent.putExtra("tipo", tipo)
-                                        context.startActivity(taskIntent)
-                                    },
-
-
-                                    ) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.next_arrow_forward_svgrepo_com),
-                                        contentDescription = "ArrowForward",
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                    )
-                                }
-                                Spacer(Modifier.padding(top = 20.dp))
-
-                            }
-
                         }
                     }
                     Spacer(Modifier.width(10.dp))
@@ -400,6 +413,8 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
+                                .scale(scaleCompletati)
+                                .shadow(8.dp, RoundedCornerShape(34))
                                 .width(160.dp)
                                 .height(161.dp)
                                 .background(
@@ -413,6 +428,8 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                                     )
                                 )
                                 .clickable(
+                                    interactionSource = interactionSourceCompletati,
+                                    indication = null,
                                     onClick = {
                                         val taskIntent = Intent(context, ListViewer::class.java)
                                         taskIntent.putExtra("token",token)
@@ -450,6 +467,8 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
+                                .scale(scaleSospesi)
+                                .shadow(8.dp, RoundedCornerShape(34))
                                 .width(160.dp)
                                 .height(161.dp)
                                 .background(
@@ -463,6 +482,8 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                                     )
                                 )
                                 .clickable(
+                                    interactionSource = interactionSourceSospesi,
+                                    indication = null,
                                     onClick = {
                                         val taskIntent = Intent(context, ListViewer::class.java)
                                         taskIntent.putExtra("token",token)

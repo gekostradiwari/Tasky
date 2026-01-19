@@ -17,13 +17,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -229,7 +234,11 @@ class ListViewer : ComponentActivity(){
                         }
                     } catch (e: Exception) {
                         println("Errore sconosciuto $e")
-                    }finally {
+                    } catch (e: java.net.SocketTimeoutException) {
+                        withContext(Dispatchers.Main) {
+                            showConnErrorDialog = true
+                        }
+                    } finally {
                         withContext(Dispatchers.Main) {
                             isLoading = false
                         }
@@ -374,7 +383,6 @@ class ListViewer : ComponentActivity(){
                 topBar = {
                     Row(
                         modifier = Modifier
-                            .height(70.dp)
                             .fillMaxWidth()
                             .background(
                                 brush = Brush.horizontalGradient(
@@ -390,7 +398,9 @@ class ListViewer : ComponentActivity(){
                                     )
 
                                 )
-                            ),
+                            )
+                            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
+                            .height(70.dp),
                         horizontalArrangement = Arrangement.spacedBy(125.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -783,7 +793,11 @@ fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: (Tas
                                 }
                             } catch (e: Exception) {
                                 println("Errore sconosciuto $e")
-                            }finally {
+                            } catch (e: java.net.SocketTimeoutException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorChange(true)
+                                }
+                            } finally {
                                 withContext(Dispatchers.Main) {
                                     onLoadingChange(false)
                                 }
@@ -960,7 +974,11 @@ fun TaskSospesa(task: Task, tipo: String?, token: String?, onDeleteRequest: (Tas
                                 }
                             } catch (e: Exception) {
                                 println("Errore sconosciuto $e")
-                            }finally {
+                            } catch (e: java.net.SocketTimeoutException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorChange(true)
+                                }
+                            } finally {
                                 withContext(Dispatchers.Main) {
                                     onLoadingChange(false)
                                 }
@@ -1126,6 +1144,10 @@ fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: St
                                 }
                             } catch (e: Exception) {
                                 println("Errore sconosciuto $e")
+                            }catch (e: java.net.SocketTimeoutException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorChange(true)
+                                }
                             }finally {
                                 withContext(Dispatchers.Main) {
                                     onLoadingChange(false)

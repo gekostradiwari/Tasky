@@ -15,15 +15,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.absolutePadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -117,7 +122,7 @@ class InfoViewer : ComponentActivity() {
             Scaffold(
                 topBar = {
                     Row(
-                        modifier = Modifier.height(70.dp)
+                        modifier = Modifier
                             .fillMaxWidth()
                             .background(brush = Brush.horizontalGradient(
                                 colors = listOf(
@@ -131,7 +136,10 @@ class InfoViewer : ComponentActivity() {
                                     Color("#7B6FE9".toColorInt())
                                 )
 
-                            )),
+                            )
+                            )
+                            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
+                            .height(70.dp),
                         horizontalArrangement = Arrangement.spacedBy(125.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -386,7 +394,12 @@ fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValu
                                 }
                             } catch (e: Exception) {
                                 println("Errore sconosciuto $e")
-                            } finally {
+                            } catch (e: java.net.SocketTimeoutException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorConn(true)
+                                }
+                            }
+                            finally {
                                 withContext(Dispatchers.Main) {
                                     onLoadingChange(false)
                                 }
@@ -420,13 +433,16 @@ fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValu
             .padding(paddingValues)
     ) {
         Spacer(Modifier.padding(top = 10.dp))
-            Text("${taskObj.Dipendente_email}", //qui va inserito il nome del progetto
+        if(tipo.equals("manager")) {
+            Text(
+                "${taskObj.Dipendente_email}", //qui va inserito il nome del progetto
                 textAlign = TextAlign.Center,
                 fontFamily = computerSaysNo,
                 fontWeight = FontWeight.W400,
                 fontSize = 30.sp,
                 modifier = Modifier.width(353.dp)
             )
+        }
 
         Spacer(Modifier.padding(bottom = 5.dp))
         Box(

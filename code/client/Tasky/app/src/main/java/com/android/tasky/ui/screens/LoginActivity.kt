@@ -135,7 +135,13 @@ class LoginActivity : ComponentActivity() {
                             }
                         } catch (e: Exception) {
                             println("Errore sconosciuto1")
-                        }finally {
+                        }
+                        catch (e: java.net.SocketTimeoutException) {
+                            withContext(Dispatchers.Main) {
+                                showConnErrorDialog = true
+                            }
+                        }
+                        finally {
                             withContext(Dispatchers.Main) {
                                 isLoading = false
                             }
@@ -383,6 +389,10 @@ class LoginActivity : ComponentActivity() {
                                 }
                             } catch (e: Exception) {
                                 println("Errore sconosciuto2 $e")
+                            }catch (e: java.net.SocketTimeoutException) {
+                                withContext(Dispatchers.Main) {
+                                    showConnErrorDialog = true
+                                }
                             }finally {
                                 withContext(Dispatchers.Main) {
                                     isLoading = false

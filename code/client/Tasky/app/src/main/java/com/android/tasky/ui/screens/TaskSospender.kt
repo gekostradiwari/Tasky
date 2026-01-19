@@ -18,14 +18,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -123,7 +128,7 @@ class TaskSospender : ComponentActivity(){
             Scaffold(
                 topBar = {
                     Row(
-                        modifier = Modifier.height(70.dp)
+                        modifier = Modifier
                             .fillMaxWidth()
                             .background(brush = Brush.horizontalGradient(
                                 colors = listOf(
@@ -137,7 +142,9 @@ class TaskSospender : ComponentActivity(){
                                     Color("#7B6FE9".toColorInt())
                                 )
 
-                            )),
+                            ))
+                            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
+                            .height(70.dp),
                         horizontalArrangement = Arrangement.spacedBy(125.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -287,6 +294,14 @@ fun TaskSospenderPreview(taskObj: Task, type:String, tipo:String, paddingValues:
                                 }
                             } catch (e: Exception) {
                                 println("Errore sconosciuto $e")
+                            }catch (e: java.net.SocketTimeoutException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorConn(true)
+                                }
+                            } finally {
+                                withContext(Dispatchers.Main){
+                                    onLoadingChange(false)
+                                }
                             }
                         }
                     }

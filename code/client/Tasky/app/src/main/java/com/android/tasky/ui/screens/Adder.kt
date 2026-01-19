@@ -19,14 +19,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -122,7 +127,6 @@ class Adder : ComponentActivity() {
                 topBar = {
                     Row(
                         modifier = Modifier
-                            .height(70.dp)
                             .fillMaxWidth()
                             .background(
                                 brush = Brush.horizontalGradient(
@@ -138,7 +142,9 @@ class Adder : ComponentActivity() {
                                     )
 
                                 )
-                            ),
+                            )
+                            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
+                            .height(70.dp),
                         horizontalArrangement = Arrangement.spacedBy(125.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -280,6 +286,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var showConfirmationDialog by remember { mutableStateOf(false) }
+    var showDataAllertDialog by remember {mutableStateOf(false)}
     LaunchedEffect(Unit) {
         scope.launch(Dispatchers.IO + handler) {
             try {
@@ -311,8 +318,18 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                 withContext(Dispatchers.Main) {
                     onErrorConn(true)
                 }
-            } catch (e: Exception) {
+            }
+            catch (e: java.net.SocketTimeoutException) {
+                withContext(Dispatchers.Main) {
+                    onErrorConn(true)
+                }
+            }
+            catch (e: Exception) {
                 println("Errore sconosciuto $e")
+            }finally {
+                withContext(Dispatchers.Main) {
+                    onLoadingChange(false)
+                }
             }
         }
     }
@@ -331,6 +348,32 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                 (dataFineProgetto == null || !dataFineTask.after(dataFineProgetto))
 
         return isNomeTaskValid && isDescrizioneValid && isDataInizioValid && isDataFineValid && dipendenteSelezionato != null
+    }
+
+    if(showDataAllertDialog){
+        AlertDialog(
+            onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+            icon = { Image(
+                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                contentDescription = "Attenzione",
+                modifier = Modifier.size(48.dp),
+            ) },
+            title = { Text("Attenzione!!") },
+            text = { Text("Inserire una data valida, assicurati che essa sia " +
+                    "compresa tra la data di inizio e fine del progetto!") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDataAllertDialog = false
+                    }
+                ) {
+                    Text("Conferma")
+                }
+            },
+            containerColor = Color.White,
+            iconContentColor = MaterialTheme.colorScheme.error,
+            titleContentColor = Color.Black
+        )
     }
 
     if (showConfirmationDialog) {
@@ -358,7 +401,6 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                                             "token" to token!!,
                                             "id_dipartimento" to id_dipartimento,
                                             "id_progetto" to id_progetto,
-                                            "id_dipartimento" to id_dipartimento,
                                             "nome" to nomeTask,
                                             "stato" to "InProgress",
                                             "descrizione" to testoDescrizione,
@@ -388,6 +430,14 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                                 }
                             } catch (e: Exception) {
                                 println("Errore sconosciuto $e")
+                            }catch (e: java.net.SocketTimeoutException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorConn(true)
+                                }
+                            } finally{
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(false)
+                                }
                             }
                         }
                     }
@@ -426,7 +476,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .width(380.dp)
+                    .width(400.dp)
                     .height(113.dp)
                     .background(
                         brush = Brush.verticalGradient(
@@ -485,7 +535,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .width(390.dp)
+                    .width(400.dp)
                     .height(113.dp)
                     .background(
                         brush = Brush.verticalGradient(
@@ -505,7 +555,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                 ) {
                     Text(
                         "Dipendente: ",
-                        textAlign = TextAlign.Center,
+                        textAlign = TextAlign.Start,
                         fontFamily = computerSaysNo,
                         fontWeight = FontWeight.W400,
                         fontSize = 40.sp,
@@ -520,12 +570,18 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                             .width(250.dp)
                             .padding(16.dp)
                     ) {
+                        val shapeDynamic = if (isExpanded) {
+                            RoundedCornerShape(topStart = 34.dp, topEnd = 34.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+                        } else {
+                            RoundedCornerShape(34.dp)
+                        }
                         OutlinedTextField(
                             modifier = Modifier
                                 .menuAnchor()
                                 .fillMaxWidth()
-                                .background(Color.White, shape = RoundedCornerShape(34)),
-                            shape = RoundedCornerShape(34),
+                                .shadow(elevation = 8.dp, shape = shapeDynamic)
+                                .background(Color.White, shape = shapeDynamic),
+                            shape = shapeDynamic,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color.Transparent,
                                 unfocusedBorderColor = Color.Transparent,
@@ -544,6 +600,26 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                         ExposedDropdownMenu(
                             expanded = isExpanded,
                             onDismissRequest = { isExpanded = false },
+                            shape = RoundedCornerShape(
+                                topStart = 0.dp,
+                                topEnd = 0.dp,
+                                bottomEnd = 34.dp,
+                                bottomStart = 34.dp
+                            ),
+                            modifier = Modifier
+                                .exposedDropdownSize(true)
+                                .background(Color.White)
+                                .border(
+                                    width = 1.dp,
+                                    color = Color.LightGray,
+                                    shape = RoundedCornerShape(
+                                        topStart = 0.dp,
+                                        topEnd = 0.dp,
+                                        bottomEnd = 34.dp,
+                                        bottomStart = 34.dp
+                                    )
+                                )
+
                         ) {
                             Dipendenti_List.forEach { dipendenteLista ->
                                 DropdownMenuItem(
@@ -567,13 +643,13 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .width(370.dp)
+                    .width(400.dp)
                     .height(250.dp)
 
             ) {
                 Box(
                     modifier = Modifier
-                        .width(370.dp)
+                        .width(400.dp)
                         .height(200.dp)
                         .background(
                             brush = Brush.verticalGradient(
@@ -582,7 +658,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                                     Color("#D06FCA".toColorInt()),
                                 ),
                             ),
-                            shape = RoundedCornerShape(34)
+                            shape = RoundedCornerShape(24)
                         ),
                     contentAlignment = Alignment.CenterStart,
 
@@ -639,7 +715,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .width(380.dp)
+                    .width(400.dp)
                     .height(113.dp)
                     .background(
                         brush = Brush.verticalGradient(
@@ -864,6 +940,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                                     }
                                     else{
                                         isDataInizioValid = false
+                                        showDataAllertDialog = true
                                     }
                                     showDialog = false
                                 }
@@ -993,6 +1070,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                                     }
                                     else {
                                         isDataFineValid = false
+                                        showDataAllertDialog = true
                                     }
                                     showDialogFine = false
                                 }
@@ -1020,7 +1098,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                 onClick = {
                     statoCorrente = 3
                 }, //Qui bisogna cambiare lo stato per passare allo stato 2
-                enabled = isDataInizioValid && isDataFineValid && !selectedDateString.isNullOrBlank() && !selectedDateString.isNullOrBlank(),
+                enabled = isDataInizioValid && isDataFineValid && selectedDateString.isNotBlank() && selectedDateStringFine.isNotBlank(),
                 modifier = Modifier
                     .width(130.dp)
                     .height(48.dp),
@@ -1368,6 +1446,14 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                                 }
                             } catch (e: Exception) {
                                 println("Errore sconosciuto $e")
+                            } catch (e: java.net.SocketTimeoutException) {
+                                withContext(Dispatchers.Main) {
+                                    onErrorConn(true)
+                                }
+                            } finally{
+                                withContext(Dispatchers.Main) {
+                                    onLoadingChange(false)
+                                }
                             }
                         }
                     }
