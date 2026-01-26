@@ -426,43 +426,43 @@ class ListViewer : ComponentActivity(){
                         contentPadding = PaddingValues(16.dp)
                     ) {
                         if(type.equals("task_in_corso")){
-                            items(Tasks_In_Corso){elemento ->
+                            items(Tasks_In_Corso.sortedBy { it.nome_progetto }){elemento ->
                                 TaskInCorso(elemento, tipo, token, { }, is_suspend, {isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
                             }
 
                         }
                         else if(type.equals("task_completati")){
-                            items(Tasks_Completate){elemento ->
+                            items(Tasks_Completate.sortedBy { it.nome_progetto }){elemento ->
                                 TaskCompletata(elemento, tipo, token, { },{isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
                             }
 
                         }
                         else if(type.equals("task_sospesi")){ //Qui non bisogna chiudere con else ma continuare con gli altri casi se ci sono progetti dipendenti o altro
-                            items(Tasks_Sospese){elemento ->
+                            items(Tasks_Sospese.sortedBy { it.nome_progetto }){elemento ->
                                 TaskSospesa(elemento, tipo, token, { },{isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
                             }
                         }
                         else if(type.equals("dipendenti")){
-                            items(Dipendenti_List){elemento ->
+                            items(Dipendenti_List.sortedBy { it.cognome }){elemento ->
                                 DipendenteElement(elemento)
                             }
                         }
                         else if(type.equals("progetti")) {
-                            items(Progetti_List) { elemento ->
+                            items(Progetti_List.sortedBy { it.nome }) { elemento ->
                                 ProgettoElement(elemento, email, type, token, tipo, dipartimento, {
                                     Progetti_List = Progetti_List - it
                                 }, adding, is_suspend, {isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it})
                             }
                         }
                         else if(type.equals("ProgettiByMGR")) {
-                            items(Progetti_List) { elemento ->
+                            items(Progetti_List.sortedBy { it.nome }) { elemento ->
                                 ProgettoElement(elemento, email, type, token, tipo, dipartimento, {
                                     Progetti_List = Progetti_List - it
                                 }, adding, is_suspend,{isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it})
                             }
                         }
                         else if(type.equals("task_by_project") && is_suspend){
-                            items(Task_list_By_project){
+                            items(Task_list_By_project.sortedBy { it.nome }){
                                 elemento ->
                                 if(elemento.stato.equals("InProgress")){
                                     TaskInCorso(elemento, tipo, token, {
@@ -472,7 +472,14 @@ class ListViewer : ComponentActivity(){
                             }
                         }
                         else if(type.equals("task_by_project")){
-                            items(Task_list_By_project){elemento ->
+                            items(Task_list_By_project.sortedBy {
+                                when(it.stato){
+                                    "InProgress" -> 1
+                                    "Sospeso" -> 2
+                                    "Completato" -> 3
+                                    else -> 4
+                                }
+                            }){elemento ->
                                 if(elemento.stato.equals("InProgress")){
                                     TaskInCorso(elemento, tipo, token, {
                                         Task_list_By_project = Task_list_By_project - it
