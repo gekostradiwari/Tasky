@@ -505,7 +505,7 @@ fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValu
                         onDismissRequest = { isExpanded = false },
                     ) {
                         if(tipo.equals("dipendente") && (taskObj.stato.equals("Completato") || taskObj.stato.equals("Sospeso"))){
-
+                            isExpanded = false
                         }
                         else if(tipo.equals("dipendente") && taskObj.stato.equals("InProgress")){
                             DropdownMenuItem(

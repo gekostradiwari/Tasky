@@ -66,8 +66,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.transition.Slide
 import android.view.Gravity
+import androidx.annotation.RequiresApi
 
 class LoginActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val sessionManager = SessionManager.getInstance(applicationContext)
