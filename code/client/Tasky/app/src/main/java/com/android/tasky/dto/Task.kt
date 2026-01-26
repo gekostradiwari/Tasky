@@ -14,5 +14,6 @@ data class Task(
     @field:Json(name = "descrizione") val descrizione: String,
     @field:Json(name = "id") val id: Int,
     @field:Json(name = "nome") val nome:String,
-    @field:Json(name = "stato") var stato: String
+    @field:Json(name = "stato") var stato: String,
+    @field:Json(name = "nome_progetto") var nome_progetto: String?
 )

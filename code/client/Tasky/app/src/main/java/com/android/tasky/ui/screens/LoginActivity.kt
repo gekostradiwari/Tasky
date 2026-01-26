@@ -3,8 +3,10 @@ package com.android.tasky.ui.screens
 import android.app.Activity
 import android.app.Activity.RESULT_OK
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.Window
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -62,6 +64,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.transition.Slide
+import android.view.Gravity
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,7 +83,6 @@ class LoginActivity : ComponentActivity() {
         val handler = CoroutineExceptionHandler { _, exception ->
             println("Caught $exception")
         }
-
         setContent {
             val context = LocalContext.current
             var showDialog by remember { mutableStateOf(false) }

@@ -7,6 +7,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -69,6 +77,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -269,6 +278,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
     var dipendenteSelezionato by remember { mutableStateOf(dipendente) }
     var testoDescrizione by remember { mutableStateOf("") }
     var isExpanded by remember { mutableStateOf(false) }
+    val density = LocalDensity.current
     //Poi va inserita la lista dei progetti per selezionare su quale progetto si vuole aggiungere la task
     var progetto: String? = null
     var progettoSelezionato by remember { mutableStateOf(progetto) }
@@ -571,7 +581,12 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                             .padding(16.dp)
                     ) {
                         val shapeDynamic = if (isExpanded) {
-                            RoundedCornerShape(topStart = 34.dp, topEnd = 34.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+                            RoundedCornerShape(
+                                topStart = 34.dp,
+                                topEnd = 34.dp,
+                                bottomStart = 0.dp,
+                                bottomEnd = 0.dp
+                            )
                         } else {
                             RoundedCornerShape(34.dp)
                         }
@@ -609,6 +624,8 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                             modifier = Modifier
                                 .exposedDropdownSize(true)
                                 .background(Color.White)
+                                .animateContentSize()
+                                .height(if (isExpanded) 200.dp else 0.dp)
                                 .border(
                                     width = 1.dp,
                                     color = Color.LightGray,
@@ -798,7 +815,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
                 onClick = {
                     statoCorrente = 2
                 }, //Qui bisogna cambiare lo stato per passare allo stato 2
-                enabled = isNomeTaskValid && isDescrizioneValid && dipendenteSelezionato != null,
+                enabled = isNomeTaskValid && isDescrizioneValid && dipendenteSelezionato != null && testoDescrizione.isNotBlank() && nomeTask.isNotBlank(),
                 modifier = Modifier
                     .width(130.dp)
                     .height(48.dp),
@@ -1683,7 +1700,7 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
                 onClick = {
                     statoCorrente = 2
                 },
-                enabled = isNomeProgettoValid && isDescrizioneValid && isBudgetValid, //Qui bisogna cambiare lo stato per passare allo stato 2
+                enabled = isNomeProgettoValid && isDescrizioneValid && isBudgetValid && nomeProgetto.isNotBlank() && descrizione.isNotBlank() && budget.isNotBlank(), //Qui bisogna cambiare lo stato per passare allo stato 2
                 modifier = Modifier
                     .width(130.dp)
                     .height(48.dp),

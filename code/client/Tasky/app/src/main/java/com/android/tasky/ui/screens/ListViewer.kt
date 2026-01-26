@@ -678,15 +678,31 @@ fun TaskCompletata(task: Task, tipo: String?, token: String?, onDeleteRequest: (
                 modifier = Modifier
                     .size(48.dp)
             )
-            Text(
-                task.nome,
-                fontFamily = computerSaysNo,
-                fontWeight = FontWeight.W400,
-                fontSize = 40.sp,
-                modifier = Modifier
-                    .padding(start = 16.dp, end = 5.dp)
-                    .width(200.dp)
+            Column(
+                verticalArrangement = Arrangement.Top,
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    task.nome,
+                    fontFamily = computerSaysNo,
+                    fontWeight = FontWeight.W400,
+                    fontSize = 40.sp,
+                    modifier = Modifier
+                        .padding(start = 16.dp, end = 5.dp)
+                        .width(200.dp)
                 )
+                if(task.nome_progetto != null) {
+                    Text(
+                        task.nome_progetto ?: "",
+                        fontFamily = computerSaysNo,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 30.sp,
+                        modifier = Modifier
+                            .padding(start = 16.dp, end = 5.dp, top = 10.dp)
+                            .width(200.dp)
+                    )
+                }
+            }
             IconButton(
                 modifier = Modifier.size(48.dp),
                 onClick = {
@@ -849,14 +865,31 @@ fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: (Tas
                 modifier = Modifier
                     .size(48.dp)
             )
-            Text(task.nome,
-                fontFamily = computerSaysNo,
-                fontWeight = FontWeight.W400,
-                fontSize = 40.sp,
-                modifier = Modifier
-                    .padding(start = 16.dp, end = 5.dp)
-                    .width(200.dp)
-            )
+            Column(
+                verticalArrangement = Arrangement.Top,
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    task.nome,
+                    fontFamily = computerSaysNo,
+                    fontWeight = FontWeight.W400,
+                    fontSize = 40.sp,
+                    modifier = Modifier
+                        .padding(start = 16.dp, end = 5.dp)
+                        .width(200.dp)
+                )
+                if(task.nome_progetto != null) {
+                    Text(
+                        task.nome_progetto ?: "",
+                        fontFamily = computerSaysNo,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 30.sp,
+                        modifier = Modifier
+                            .padding(start = 16.dp, end = 5.dp, top = 10.dp)
+                            .width(200.dp)
+                    )
+                }
+            }
             IconButton(
                 modifier = Modifier.size(48.dp),
                 onClick = {
@@ -1030,14 +1063,31 @@ fun TaskSospesa(task: Task, tipo: String?, token: String?, onDeleteRequest: (Tas
                 modifier = Modifier
                     .size(48.dp)
             )
-            Text(task.nome,
-                fontFamily = computerSaysNo,
-                fontWeight = FontWeight.W400,
-                fontSize = 40.sp,
-                modifier = Modifier
-                    .padding(start = 16.dp, end = 5.dp)
-                    .width(200.dp)
-            )
+            Column(
+                verticalArrangement = Arrangement.Top,
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    task.nome,
+                    fontFamily = computerSaysNo,
+                    fontWeight = FontWeight.W400,
+                    fontSize = 40.sp,
+                    modifier = Modifier
+                        .padding(start = 16.dp, end = 5.dp)
+                        .width(200.dp)
+                )
+                if(task.nome_progetto != null) {
+                    Text(
+                        task.nome_progetto ?: "",
+                        fontFamily = computerSaysNo,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 30.sp,
+                        modifier = Modifier
+                            .padding(start = 16.dp, end = 5.dp, top = 10.dp)
+                            .width(200.dp)
+                    )
+                }
+            }
             IconButton(
                 modifier = Modifier.size(48.dp),
                 onClick = {

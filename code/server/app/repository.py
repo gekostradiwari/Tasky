@@ -343,9 +343,11 @@ def get_suspended_tasks_for_employee(email: str, get_db_connection_fn=get_db_con
     try:
         with conn.cursor() as cursor:
             sql = sql_select_helper(
-                table='TASK',
-                where_cols=['Dipendente_email', 'stato'],
-                order_by='data_fine ASC'
+                table='TASK t',
+                columns = ['t.*', 'p.nome AS nome_progetto'],
+                joins = [{'type': 'JOIN', 'table': 'Progetto', 'alias': 'p', 'on': 't.Progetto_id_progetto = p.id_progetto'}],
+                where_cols=['t.Dipendente_email', 't.stato'],
+                order_by='t.data_fine ASC'
             )
             cursor.execute(sql, (email, 'Sospeso'))
             items = cursor.fetchall() or []
@@ -361,9 +363,11 @@ def get_completed_tasks_for_employee(email: str, get_db_connection_fn=get_db_con
     try:
         with conn.cursor() as cursor:
             sql = sql_select_helper(
-                table='TASK',
-                where_cols=['Dipendente_email', 'stato'],
-                order_by='data_fine DESC'
+                table='TASK t',
+                columns=['t.*', 'p.nome AS nome_progetto'],
+                joins=[{'type': 'JOIN', 'table': 'Progetto', 'alias': 'p', 'on': 't.Progetto_id_progetto = p.id_progetto'}],
+                where_cols=['t.Dipendente_email', 't.stato'],
+                order_by='t.data_fine DESC'
             )
             cursor.execute(sql, (email, 'Completato'))
             items = cursor.fetchall() or []
@@ -391,7 +395,13 @@ def get_in_progress_tasks_for_employee(email: str, get_db_connection_fn=get_db_c
             # Facciamo una query che prende entrambe per sicurezza, oppure solo InProgress se richiesto strettamente.
             # Dato che non ho specifiche strette, prendo 'InProgress' e 'Open'.
             
-            sql = "SELECT * FROM TASK WHERE Dipendente_email = %s AND stato IN ('Open', 'InProgress') ORDER BY data_fine ASC"
+            sql = sql_select_helper(
+                table='TASK t',
+                columns=['t.*', 'p.nome AS nome_progetto'],
+                joins=[{'type': 'JOIN', 'table': 'Progetto', 'alias': 'p', 'on': 't.Progetto_id_progetto = p.id_progetto'}],
+                where_exprs=["t.Dipendente_email = %s", "t.stato IN ('Open', 'InProgress')"],
+                order_by='t.data_fine ASC'
+            )
             cursor.execute(sql, (email,))
             items = cursor.fetchall() or []
             _format_items_dates(items, ['data_inizio', 'data_fine'])

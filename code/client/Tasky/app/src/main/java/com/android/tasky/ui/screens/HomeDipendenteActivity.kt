@@ -355,7 +355,7 @@ fun HomeDipendenteActivityPreview(token:String?, sesso:String?, id_dipartimento:
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .scale(scaleInCorso)
-                            .shadow(18.dp, RoundedCornerShape(34))
+                            .shadow(8.dp, RoundedCornerShape(34))
                             .width(358.dp)
                             .height(161.dp)
                             .background(
