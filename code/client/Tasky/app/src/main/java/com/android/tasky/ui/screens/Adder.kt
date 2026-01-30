@@ -5,6 +5,7 @@ import android.content.Intent
 import android.icu.util.Calendar
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
@@ -132,6 +133,7 @@ class Adder : ComponentActivity() {
             var isCompletedDialog by remember {mutableStateOf(false)}
             var isConfirmed by remember {mutableStateOf(false)}
             var isCompleted by remember {mutableStateOf(false)}
+            var statoCorrente by remember { mutableIntStateOf(1) }
             Scaffold(
                 topBar = {
                     Row(
@@ -157,7 +159,14 @@ class Adder : ComponentActivity() {
                         horizontalArrangement = Arrangement.spacedBy(125.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = { (context as? Activity)?.finish()}
+                        IconButton(onClick = {
+                            if(statoCorrente > 1){
+                                statoCorrente--
+                            }
+                            else{
+                                (context as? Activity)?.finish()
+                            }
+                        }
                         ) {
                             Icon(Icons.Default.ArrowBack, "TurnBack")
                         }
@@ -172,10 +181,10 @@ class Adder : ComponentActivity() {
                 modifier = Modifier.fillMaxSize(),
                 content = { paddingValues ->
                     if(type.equals("taskAdder")){
-                    TaskAdder(paddingValues, {isLoading = it}, token, email, id_dipartimento, nome_progetto, id_progetto, progettoObj!!,{showConnErrorDialog = it}, {isCompletedDialog = it})
+                    TaskAdder(paddingValues, {isLoading = it}, token, email, id_dipartimento, nome_progetto, id_progetto, progettoObj!!,{showConnErrorDialog = it}, {isCompletedDialog = it}, {statoCorrente = it}, {statoCorrente})
                     }
                     else if(type.equals("projectAdder")){
-                        projectAdder(paddingValues, {isLoading = it}, token, id_dipartimento,{showConnErrorDialog = it}, {isCompletedDialog = it})
+                        projectAdder(paddingValues, {isLoading = it}, token, id_dipartimento,{showConnErrorDialog = it}, {isCompletedDialog = it}, {statoCorrente = it}, {statoCorrente})
                     }
                     else{
                         Text(text = "Errore")
@@ -253,6 +262,15 @@ class Adder : ComponentActivity() {
                     }
                 }
             )
+            BackHandler{
+                if(statoCorrente > 1){
+                    statoCorrente--
+                }
+                else{
+                    (context as? Activity)?.finishAffinity()
+                }
+
+            }
         }
 
     }
@@ -261,7 +279,7 @@ class Adder : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, token: String?, email: String?, id_dipartimento: Int, nome_progetto: String?, id_progetto: Int, progettoObj: Progetto, onErrorConn: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit) {
+fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, token: String?, email: String?, id_dipartimento: Int, nome_progetto: String?, id_progetto: Int, progettoObj: Progetto, onErrorConn: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit, changeStatoCorrente: (Int) -> Unit, getState: () -> Int) {
     val datePickerState = rememberDatePickerState()
     var showDialog by remember { mutableStateOf(false) }
     val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -272,7 +290,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
     var selectedDateStringFine by remember { mutableStateOf("") }
     var selectedDateFine: Date
     var nomeTask by remember { mutableStateOf("") }
-    var statoCorrente by remember { mutableIntStateOf(1) }
+    //var statoCorrente by remember { mutableIntStateOf(1) }
     var Dipendenti_List by remember { mutableStateOf<List<Dipendente>>(emptyList()) }
     var dipendente: Dipendente? = null
     var dipendenteSelezionato by remember { mutableStateOf(dipendente) }
@@ -473,7 +491,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
 
 
 
-    if (statoCorrente == 1) {
+    if (getState() == 1) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -813,7 +831,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
             Spacer(Modifier.padding(bottom = 20.dp))
             Button(
                 onClick = {
-                    statoCorrente = 2
+                    changeStatoCorrente(2)
                 }, //Qui bisogna cambiare lo stato per passare allo stato 2
                 enabled = isNomeTaskValid && isDescrizioneValid && dipendenteSelezionato != null && testoDescrizione.isNotBlank() && nomeTask.isNotBlank(),
                 modifier = Modifier
@@ -824,7 +842,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
             }
 
         }
-    } else if (statoCorrente == 2) {
+    } else if (getState() == 2) {
         val interactionSource = remember { MutableInteractionSource() }
         LaunchedEffect(interactionSource) {
             interactionSource.interactions.collect { interaction ->
@@ -1113,7 +1131,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
             Spacer(Modifier.padding(bottom = 20.dp))
             Button(
                 onClick = {
-                    statoCorrente = 3
+                    changeStatoCorrente(3)
                 }, //Qui bisogna cambiare lo stato per passare allo stato 2
                 enabled = isDataInizioValid && isDataFineValid && selectedDateString.isNotBlank() && selectedDateStringFine.isNotBlank(),
                 modifier = Modifier
@@ -1125,7 +1143,7 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
 
         }
     }
-    else if(statoCorrente == 3){
+    else if(getState() == 3){
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1369,8 +1387,8 @@ fun TaskAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, token: String?, id_dipartimento: Int, onErrorConn: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit) {
-    var statoCorrente by remember { mutableIntStateOf(1) }
+fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, token: String?, id_dipartimento: Int, onErrorConn: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit,changeStatoCorrente: (Int) -> Unit, getState: () -> Int) {
+    //var statoCorrente by remember { mutableIntStateOf(1) }
     var budget by remember { mutableStateOf("") }
     var descrizione by remember { mutableStateOf("") }
     var nomeProgetto by remember { mutableStateOf("") }
@@ -1494,7 +1512,7 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
         )
     }
 
-    if (statoCorrente == 1) {
+    if (getState() == 1) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1698,7 +1716,7 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
             Spacer(Modifier.padding(bottom = 20.dp))
             Button(
                 onClick = {
-                    statoCorrente = 2
+                    changeStatoCorrente(2)
                 },
                 enabled = isNomeProgettoValid && isDescrizioneValid && isBudgetValid && nomeProgetto.isNotBlank() && descrizione.isNotBlank() && budget.isNotBlank(), //Qui bisogna cambiare lo stato per passare allo stato 2
                 modifier = Modifier
@@ -1709,7 +1727,7 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
             }
 
         }
-    } else if (statoCorrente == 2) {
+    } else if (getState() == 2) {
         val interactionSource = remember { MutableInteractionSource() }
         LaunchedEffect(interactionSource) {
             interactionSource.interactions.collect { interaction ->
@@ -1993,7 +2011,7 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
             Spacer(Modifier.padding(bottom = 20.dp))
             Button(
                 onClick = {
-                    statoCorrente = 3
+                    changeStatoCorrente(3)
                 },
                 enabled = isDataInizioValid && isDataFineValid && !selectedDateString.isNullOrBlank()  && !selectedDateStringFine.isNullOrBlank(),//Qui bisogna cambiare lo stato per passare allo stato 2
                 modifier = Modifier
@@ -2004,7 +2022,7 @@ fun projectAdder(paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Uni
             }
 
         }
-    } else if (statoCorrente == 3){
+    } else if (getState() == 3){
         Column(
             modifier = Modifier
                 .fillMaxSize()

@@ -3,6 +3,7 @@ package com.android.tasky.ui.screens
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
@@ -64,6 +65,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -127,6 +129,8 @@ class ListViewer : ComponentActivity(){
             var showConnErrorDialog by remember { mutableStateOf(false) }
             var isCompletedDialog by remember {mutableStateOf(false)}
             var isCompleted by remember {mutableStateOf(false)}
+            val configuration = LocalConfiguration.current
+            val isLandScape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
             suspend fun loadData(){
                 if(isLoading) return
