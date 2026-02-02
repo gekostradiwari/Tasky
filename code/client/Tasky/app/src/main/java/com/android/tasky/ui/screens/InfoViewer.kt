@@ -2,6 +2,7 @@ package com.android.tasky.ui.screens
 
 import android.app.Activity
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -31,7 +32,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
@@ -63,6 +66,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -158,7 +162,7 @@ class InfoViewer : ComponentActivity() {
                 modifier = Modifier.fillMaxSize(),
                 content = { paddingValues ->
                     if(infoType.equals("task")){
-                        infoTask(taskObj!!, type!!, tipo!!, paddingValues, {isLoading = it}, token!!, {showConnErrorDialog = it}, {isCompletedDialog = it}, {isConfirmedDialog = it}, isConfirmed, isCompleted)
+                        infoTask(taskObj!!, type!!, tipo!!, paddingValues, {isLoading = it}, token!!, {showConnErrorDialog = it}, {isCompletedDialog = it}, {isConfirmedDialog = it}, isConfirmed, isCompleted, {})
                     }
                     else if(infoType.equals("progetto")) {
                         infoProgetto(progettoObj!!, paddingValues, {showConnErrorDialog = it})
@@ -290,7 +294,7 @@ class InfoViewer : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, token: String, onErrorConn: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit, isConfirmedDialog: (Boolean) -> Unit, isConfirmed: Boolean, isCompleted: Boolean) {
+fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValues, onLoadingChange: (Boolean) -> Unit, token: String, onErrorConn: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit, isConfirmedDialog: (Boolean) -> Unit, isConfirmed: Boolean, isCompleted: Boolean, isLandscape: () -> Unit) {
     var statoAttuale by remember { mutableStateOf(taskObj.stato) }
     var isExpanded by remember { mutableStateOf(false) }
     var showConfirmationDialog by remember { mutableStateOf(false) }
@@ -300,6 +304,8 @@ fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValu
         println("Caught $exception")
     }
     val scope = rememberCoroutineScope()
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val gradientColors = if(statoAttuale.equals("Completato")){
         listOf(
             Color("#66D161".toColorInt()),
@@ -375,13 +381,14 @@ fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValu
                                             statoAttuale = "Sospeso"
                                         }
                                         else if(statoDaImpostare.equals("InProgress")){
-                                            statoAttuale = "In Corso"
+                                            statoAttuale = "InProgress"
                                         }
                                         else{
                                             statoAttuale = ""
                                         }
                                         taskObj.stato = statoDaImpostare
                                         isCompletedDialog(true)
+                                        isLandscape()
                                     }
                                 }
                             } catch (e: java.net.ConnectException) {
@@ -431,6 +438,10 @@ fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValu
         modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)
+            .then(
+                if (isLandscape) Modifier.verticalScroll(rememberScrollState())
+                else Modifier
+            )
     ) {
         Spacer(Modifier.padding(top = 10.dp))
         if(tipo.equals("manager")) {
@@ -490,7 +501,14 @@ fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValu
                             unfocusedBorderColor = Color.Transparent,
                             disabledBorderColor = Color.Transparent,
                         ),
-                        value = statoAttuale, //Qui ci va sempre Task.stato,
+                        value =
+                            if(statoAttuale.equals("InProgress")){
+                                "In corso"
+                            }
+                            else{
+                                statoAttuale
+                            }
+                        , //Qui ci va sempre Task.stato,
                         readOnly = true,
                         onValueChange = {},
                         textStyle = TextStyle(
@@ -760,12 +778,18 @@ fun infoTask(taskObj: Task, type:String, tipo:String, paddingValues: PaddingValu
 
 @Composable
 fun infoProgetto(progetto: Progetto, paddingValues: PaddingValues, onErrorConn: (Boolean) -> Unit){
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     Column(
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)
+            .then(
+                if (isLandscape) Modifier.verticalScroll(rememberScrollState())
+                else Modifier
+            )
     ){
         Spacer(Modifier.padding(top = 10.dp))
         Box(

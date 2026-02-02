@@ -3,6 +3,7 @@ package com.android.tasky.ui.screens
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -82,6 +83,7 @@ import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.room.util.TableInfo
 import com.android.tasky.R
 import com.android.tasky.dto.Dipendente
 import com.android.tasky.dto.Progetto
@@ -117,6 +119,7 @@ class ListViewer : ComponentActivity(){
         }
         val adding = intent.getBooleanExtra("adding", false)
         val is_suspend = intent.getBooleanExtra("suspend", false)
+
         setContent {
             var Tasks_Completate by remember { mutableStateOf<List<Task>>(emptyList()) }
             var Tasks_In_Corso by remember { mutableStateOf<List<Task>>(emptyList()) }
@@ -131,10 +134,29 @@ class ListViewer : ComponentActivity(){
             var isCompleted by remember {mutableStateOf(false)}
             val configuration = LocalConfiguration.current
             val isLandScape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+            var selectedTask by remember {mutableStateOf<Task?>(null)}
+            var selectedProgetto by remember {mutableStateOf<Progetto?>(null)}
+            var need_reload by remember {mutableStateOf(false)}
+
+            val isShowingList = type == "task_in_corso" || type == "progetti" || type == "task_completati" || type == "task_sospesi" || type == "ProgettiByMGR" || type == "task_by_project"
+
+            DisposableEffect(isShowingList) {
+                val activity = context as? Activity
+                if (isShowingList) {
+                    // Se è una lista, lascia ruotare liberamente
+                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
+                } else {
+                    // Altrimenti, blocca in verticale
+                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                }
+
+                onDispose { }
+            }
 
             suspend fun loadData(){
                 if(isLoading) return
                 lifecycleScope.launch(Dispatchers.IO + handler) {
+                    println("Sono nella loadData")
                     try {
                         withContext(Dispatchers.Main) {
                             isLoading = true
@@ -150,6 +172,7 @@ class ListViewer : ComponentActivity(){
                                 isLoading = false
                             }
                             if(response.isSuccessful){
+                                Tasks_In_Corso = emptyList()
                                 Tasks_In_Corso = response.body()!!.data.items
                             }
                         }
@@ -162,6 +185,7 @@ class ListViewer : ComponentActivity(){
                                 isLoading = false
                             }
                             if(response.isSuccessful){
+                                Tasks_Completate = emptyList()
                                 Tasks_Completate = response.body()!!.data.items
                             }
                         }
@@ -174,6 +198,7 @@ class ListViewer : ComponentActivity(){
                                 isLoading = false
                             }
                             if(response.isSuccessful){
+                                Tasks_Sospese = emptyList()
                                 Tasks_Sospese = response.body()!!.data.items
                             }
 
@@ -211,6 +236,7 @@ class ListViewer : ComponentActivity(){
                                 isLoading = false
                             }
                             if(response.isSuccessful){
+                                Task_list_By_project = emptyList()
                                 Task_list_By_project = response.body()!!.data.items
                             }
 
@@ -404,24 +430,352 @@ class ListViewer : ComponentActivity(){
                                 )
                             )
                             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
-                            .height(70.dp),
-                        horizontalArrangement = Arrangement.spacedBy(125.dp),
+                            .height(
+                                if(isLandScape){
+                                    36.dp
+                                }else {
+                                    70.dp
+                                }
+                            ),
+                        //horizontalArrangement = Arrangement.spacedBy(125.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = { (context as? Activity)?.finish()}
                         ) {
                             Icon(Icons.Default.ArrowBack, "TurnBack")
                         }
-                        Image(
-                            painter = painterResource(id = R.drawable.taskyfinalnobackground),
-                            contentDescription = "Logo Tasky",
+                        Box(
                             modifier = Modifier
-                                .size(78.dp)
-                        )
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.taskyfinalnobackground),
+                                contentDescription = "Logo Tasky",
+                                modifier = Modifier.size(if (isLandScape) 48.dp else 78.dp)
+                            )
+                        }
+
+                        // 3. Uno Spacer vuoto a destra con la stessa larghezza del pulsante
+                        // per bilanciare la riga e mantenere il Box perfettamente al centro
+                        Spacer(modifier = Modifier.width(48.dp))
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
                 content = { paddingValues ->
+                    if(isLandScape) {
+                        val context = LocalContext.current
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(paddingValues),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.Top
+                        ){
+                            LazyColumn(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                contentPadding = PaddingValues(16.dp)
+                            ) {
+                                if (type.equals("task_in_corso")) {
+                                    items(Tasks_In_Corso.sortedBy { it.nome_progetto }) { elemento ->
+                                        TaskInCorso(
+                                            elemento,
+                                            tipo,
+                                            token,
+                                            { },
+                                            is_suspend,
+                                            { isLoading = it },
+                                            { showConnErrorDialog = it },
+                                            { isCompletedDialog = it },
+                                            dipartimento,
+                                            {selectedTask = it}
+                                        )
+                                    }
+
+                                } else if (type.equals("task_completati")) {
+                                    items(Tasks_Completate.sortedBy { it.nome_progetto }) { elemento ->
+                                        TaskCompletata(
+                                            elemento,
+                                            tipo,
+                                            token,
+                                            { },
+                                            { isLoading = it },
+                                            { showConnErrorDialog = it },
+                                            { isCompletedDialog = it },
+                                            dipartimento,
+                                            {selectedTask = it}
+                                        )
+                                    }
+
+                                } else if (type.equals("task_sospesi")) { //Qui non bisogna chiudere con else ma continuare con gli altri casi se ci sono progetti dipendenti o altro
+                                    items(Tasks_Sospese.sortedBy { it.nome_progetto }) { elemento ->
+                                        TaskSospesa(
+                                            elemento,
+                                            tipo,
+                                            token,
+                                            { },
+                                            { isLoading = it },
+                                            { showConnErrorDialog = it },
+                                            { isCompletedDialog = it },
+                                            dipartimento,
+                                            {selectedTask = it}
+                                        )
+                                    }
+                                } else if (type.equals("dipendenti")) {
+                                    items(Dipendenti_List.sortedBy { it.cognome }) { elemento ->
+                                        DipendenteElement(elemento)
+                                    }
+                                } else if (type.equals("progetti")) {
+                                    items(Progetti_List.sortedBy { it.nome }) { elemento ->
+                                        ProgettoElement(
+                                            elemento,
+                                            email,
+                                            type,
+                                            token,
+                                            tipo,
+                                            dipartimento,
+                                            {
+                                                Progetti_List = Progetti_List - it
+                                            },
+                                            adding,
+                                            is_suspend,
+                                            { isLoading = it },
+                                            { showConnErrorDialog = it },
+                                            { isCompletedDialog = it },
+                                            {selectedProgetto = it}
+                                            )
+                                    }
+                                } else if (type.equals("ProgettiByMGR")) {
+                                    items(Progetti_List.sortedBy { it.nome }) { elemento ->
+                                        ProgettoElement(
+                                            elemento,
+                                            email,
+                                            type,
+                                            token,
+                                            tipo,
+                                            dipartimento,
+                                            {
+                                                Progetti_List = Progetti_List - it
+                                            },
+                                            adding,
+                                            is_suspend,
+                                            { isLoading = it },
+                                            { showConnErrorDialog = it },
+                                            { isCompletedDialog = it },
+                                            {selectedProgetto = it}
+                                            )
+                                    }
+                                } else if (type.equals("task_by_project") && is_suspend) {
+                                    items(Task_list_By_project.sortedBy { it.nome }) { elemento ->
+                                        if (elemento.stato.equals("InProgress")) {
+                                            TaskInCorso(
+                                                elemento,
+                                                tipo,
+                                                token,
+                                                {
+                                                    Task_list_By_project = Task_list_By_project - it
+                                                },
+                                                is_suspend,
+                                                { isLoading = it },
+                                                { showConnErrorDialog = it },
+                                                { isCompletedDialog = it },
+                                                dipartimento,
+                                                {selectedTask = it}
+                                            )
+                                        }
+                                    }
+                                } else if (type.equals("task_by_project")) {
+                                    items(Task_list_By_project.sortedBy {
+                                        when (it.stato) {
+                                            "InProgress" -> 1
+                                            "Sospeso" -> 2
+                                            "Completato" -> 3
+                                            else -> 4
+                                        }
+                                    }) { elemento ->
+                                        if (elemento.stato.equals("InProgress")) {
+                                            TaskInCorso(
+                                                elemento,
+                                                tipo,
+                                                token,
+                                                {
+                                                    Task_list_By_project = Task_list_By_project - it
+                                                },
+                                                is_suspend,
+                                                { isLoading = it },
+                                                { showConnErrorDialog = it },
+                                                { isCompletedDialog = it },
+                                                dipartimento,
+                                                {selectedTask = it}
+                                            )
+                                        } else if (elemento.stato.equals("Completato")) {
+                                            TaskCompletata(
+                                                elemento,
+                                                tipo,
+                                                token,
+                                                {
+                                                    Task_list_By_project = Task_list_By_project - it
+                                                },
+                                                { isLoading = it },
+                                                { showConnErrorDialog = it },
+                                                { isCompletedDialog = it },
+                                                dipartimento,
+                                                {selectedTask = it}
+                                            )
+                                        } else {
+                                            TaskSospesa(
+                                                elemento,
+                                                tipo,
+                                                token,
+                                                {
+                                                    Task_list_By_project = Task_list_By_project - it
+                                                },
+                                                { isLoading = it },
+                                                { showConnErrorDialog = it },
+                                                { isCompletedDialog = it },
+                                                dipartimento,
+                                                {selectedTask = it}
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            Column(
+                                Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+
+                            ){
+
+                                if(selectedTask != null){
+                                    infoTask(
+                                        taskObj = selectedTask!!,
+                                        type = type ?: "", // Il tipo di lista corrente
+                                        tipo = tipo ?: "", // "dipendente" o "manager"
+                                        paddingValues = PaddingValues(0.dp),
+                                        onLoadingChange = { isLoading = it },
+                                        token = token ?: "",
+                                        onErrorConn = { showConnErrorDialog = it },
+                                        isCompletedDialog = { },
+                                        isConfirmedDialog = { /* gestisci se necessario */ },
+                                        isConfirmed = false,
+                                        isCompleted = false,
+                                        isLandscape = {
+                                            scope.launch {
+                                                loadData()
+                                            }
+                                        }
+                                    )
+
+                                }
+                                else if(selectedProgetto != null){
+                                    infoProgetto(
+                                        progetto = selectedProgetto!!,
+                                        paddingValues = PaddingValues(0.dp),
+                                        onErrorConn = { showConnErrorDialog = it },
+                                    )
+
+                                }
+                                else{
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
+                                        Text("Seleziona un task o un progetto per vederne i dettagli", fontFamily = computerSaysNo)
+                                    }
+                                }
+
+                            }
+                            if (isLoading) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize() // Occupa tutto lo schermo
+                                        .background(Color.Black.copy(alpha = 0.4f)) // Sfondo scuro e semitrasparente
+                                        .clickable(enabled = false, onClick = {})
+                                        .padding(paddingValues), // Blocca i click sullo sfondo
+                                    contentAlignment = Alignment.Center // 2. Centra TUTTO il suo contenuto
+                                ) {
+                                    // 3. Il CircularProgressIndicator ora verrà centrato da questo Box
+                                    CircularProgressIndicator(
+                                        color = Color.Magenta,
+                                        strokeWidth = 5.dp // Aumentato leggermente per maggiore visibilità
+                                    )
+                                }
+                            }
+                            if (showConnErrorDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { /* Non fare nulla per renderlo modale */ },
+                                    icon = {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                                            contentDescription = "Warning",
+                                            modifier = Modifier.size(48.dp),
+                                        )
+                                    },
+                                    title = { Text("Problema di connessione") },
+                                    text = { Text("Problema di connessione si prega di attendere e riprovare.") },
+                                    confirmButton = {
+                                        Button(
+                                            onClick = {
+                                                // Chiudi il dialog e permetti all'utente di riprovare
+                                                showConnErrorDialog = false
+                                            }
+                                        ) {
+                                            Text("Riprova")
+                                        }
+                                    },
+                                    containerColor = Color.White,
+                                    iconContentColor = MaterialTheme.colorScheme.error,
+                                    titleContentColor = Color.Black
+                                )
+                            }
+                            if (isCompletedDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { isCompletedDialog = false },
+                                    icon = {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.check_mark_button_svgrepo_com),
+                                            contentDescription = "Warning",
+                                            modifier = Modifier.size(48.dp),
+                                        )
+                                    },
+                                    title = { Text("Success!") },
+                                    text = { Text("Operazione avvenuta con successo!") },
+                                    confirmButton = {
+                                        Button(
+                                            onClick = {
+                                                // Chiudi il dialog e permetti all'utente di riprovare
+                                                isCompleted = true
+                                                isCompletedDialog = false
+                                                if (tipo.equals("dipendente")) {
+                                                    val intent =
+                                                        Intent(context, HomeDipendenteActivity::class.java)
+                                                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                                    startActivity(intent)
+                                                    finish()
+                                                } else {
+                                                    val intent =
+                                                        Intent(context, HomeManagerActivity::class.java)
+                                                    intent.flags =
+                                                        Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                                    startActivity(intent)
+                                                    finish()
+                                                }
+                                            }
+                                        ) {
+                                            Text("OK")
+                                        }
+                                    },
+                                    containerColor = Color.White,
+                                    iconContentColor = MaterialTheme.colorScheme.error,
+                                    titleContentColor = Color.Black
+                                )
+                            }
+
+                        }
+                    }
+                    else{
                     LazyColumn(
                         modifier = Modifier
                             .padding(paddingValues)
@@ -429,75 +783,166 @@ class ListViewer : ComponentActivity(){
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(16.dp)
                     ) {
-                        if(type.equals("task_in_corso")){
-                            items(Tasks_In_Corso.sortedBy { it.nome_progetto }){elemento ->
-                                TaskInCorso(elemento, tipo, token, { }, is_suspend, {isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
+                        if (type.equals("task_in_corso")) {
+                            items(Tasks_In_Corso.sortedBy { it.nome_progetto }) { elemento ->
+                                TaskInCorso(
+                                    elemento,
+                                    tipo,
+                                    token,
+                                    { },
+                                    is_suspend,
+                                    { isLoading = it },
+                                    { showConnErrorDialog = it },
+                                    { isCompletedDialog = it },
+                                    dipartimento,
+                                    {selectedTask = it}
+                                )
                             }
 
-                        }
-                        else if(type.equals("task_completati")){
-                            items(Tasks_Completate.sortedBy { it.nome_progetto }){elemento ->
-                                TaskCompletata(elemento, tipo, token, { },{isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
+                        } else if (type.equals("task_completati")) {
+                            items(Tasks_Completate.sortedBy { it.nome_progetto }) { elemento ->
+                                TaskCompletata(
+                                    elemento,
+                                    tipo,
+                                    token,
+                                    { },
+                                    { isLoading = it },
+                                    { showConnErrorDialog = it },
+                                    { isCompletedDialog = it },
+                                    dipartimento,
+                                    {selectedTask = it}
+                                )
                             }
 
-                        }
-                        else if(type.equals("task_sospesi")){ //Qui non bisogna chiudere con else ma continuare con gli altri casi se ci sono progetti dipendenti o altro
-                            items(Tasks_Sospese.sortedBy { it.nome_progetto }){elemento ->
-                                TaskSospesa(elemento, tipo, token, { },{isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
+                        } else if (type.equals("task_sospesi")) { //Qui non bisogna chiudere con else ma continuare con gli altri casi se ci sono progetti dipendenti o altro
+                            items(Tasks_Sospese.sortedBy { it.nome_progetto }) { elemento ->
+                                TaskSospesa(
+                                    elemento,
+                                    tipo,
+                                    token,
+                                    { },
+                                    { isLoading = it },
+                                    { showConnErrorDialog = it },
+                                    { isCompletedDialog = it },
+                                    dipartimento,
+                                    {selectedTask = it}
+                                )
                             }
-                        }
-                        else if(type.equals("dipendenti")){
-                            items(Dipendenti_List.sortedBy { it.cognome }){elemento ->
+                        } else if (type.equals("dipendenti")) {
+                            items(Dipendenti_List.sortedBy { it.cognome }) { elemento ->
                                 DipendenteElement(elemento)
                             }
-                        }
-                        else if(type.equals("progetti")) {
+                        } else if (type.equals("progetti")) {
                             items(Progetti_List.sortedBy { it.nome }) { elemento ->
-                                ProgettoElement(elemento, email, type, token, tipo, dipartimento, {
-                                    Progetti_List = Progetti_List - it
-                                }, adding, is_suspend, {isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it})
+                                ProgettoElement(
+                                    elemento,
+                                    email,
+                                    type,
+                                    token,
+                                    tipo,
+                                    dipartimento,
+                                    {
+                                        Progetti_List = Progetti_List - it
+                                    },
+                                    adding,
+                                    is_suspend,
+                                    { isLoading = it },
+                                    { showConnErrorDialog = it },
+                                    { isCompletedDialog = it },
+                                    {selectedProgetto = it}
+                                    )
                             }
-                        }
-                        else if(type.equals("ProgettiByMGR")) {
+                        } else if (type.equals("ProgettiByMGR")) {
                             items(Progetti_List.sortedBy { it.nome }) { elemento ->
-                                ProgettoElement(elemento, email, type, token, tipo, dipartimento, {
-                                    Progetti_List = Progetti_List - it
-                                }, adding, is_suspend,{isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it})
+                                ProgettoElement(
+                                    elemento,
+                                    email,
+                                    type,
+                                    token,
+                                    tipo,
+                                    dipartimento,
+                                    {
+                                        Progetti_List = Progetti_List - it
+                                    },
+                                    adding,
+                                    is_suspend,
+                                    { isLoading = it },
+                                    { showConnErrorDialog = it },
+                                    { isCompletedDialog = it },
+                                    {selectedProgetto = it}
+                                    )
                             }
-                        }
-                        else if(type.equals("task_by_project") && is_suspend){
-                            items(Task_list_By_project.sortedBy { it.nome }){
-                                elemento ->
-                                if(elemento.stato.equals("InProgress")){
-                                    TaskInCorso(elemento, tipo, token, {
-                                        Task_list_By_project = Task_list_By_project - it
-                                    }, is_suspend, {isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
+                        } else if (type.equals("task_by_project") && is_suspend) {
+                            items(Task_list_By_project.sortedBy { it.nome }) { elemento ->
+                                if (elemento.stato.equals("InProgress")) {
+                                    TaskInCorso(
+                                        elemento,
+                                        tipo,
+                                        token,
+                                        {
+                                            Task_list_By_project = Task_list_By_project - it
+                                        },
+                                        is_suspend,
+                                        { isLoading = it },
+                                        { showConnErrorDialog = it },
+                                        { isCompletedDialog = it },
+                                        dipartimento,
+                                        {selectedTask = it}
+                                    )
                                 }
                             }
-                        }
-                        else if(type.equals("task_by_project")){
+                        } else if (type.equals("task_by_project")) {
                             items(Task_list_By_project.sortedBy {
-                                when(it.stato){
+                                when (it.stato) {
                                     "InProgress" -> 1
                                     "Sospeso" -> 2
                                     "Completato" -> 3
                                     else -> 4
                                 }
-                            }){elemento ->
-                                if(elemento.stato.equals("InProgress")){
-                                    TaskInCorso(elemento, tipo, token, {
-                                        Task_list_By_project = Task_list_By_project - it
-                                    },is_suspend, {isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
-                                }
-                                else if(elemento.stato.equals("Completato")){
-                                    TaskCompletata(elemento, tipo, token, {
-                                        Task_list_By_project = Task_list_By_project - it
-                                    }, {isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
-                                }
-                                else{
-                                    TaskSospesa(elemento, tipo, token, {
-                                        Task_list_By_project = Task_list_By_project - it
-                                    }, {isLoading = it}, {showConnErrorDialog = it}, {isCompletedDialog = it}, dipartimento)
+                            }) { elemento ->
+                                if (elemento.stato.equals("InProgress")) {
+                                    TaskInCorso(
+                                        elemento,
+                                        tipo,
+                                        token,
+                                        {
+                                            Task_list_By_project = Task_list_By_project - it
+                                        },
+                                        is_suspend,
+                                        { isLoading = it },
+                                        { showConnErrorDialog = it },
+                                        { isCompletedDialog = it },
+                                        dipartimento,
+                                        {selectedTask = it}
+                                    )
+                                } else if (elemento.stato.equals("Completato")) {
+                                    TaskCompletata(
+                                        elemento,
+                                        tipo,
+                                        token,
+                                        {
+                                            Task_list_By_project = Task_list_By_project - it
+                                        },
+                                        { isLoading = it },
+                                        { showConnErrorDialog = it },
+                                        { isCompletedDialog = it },
+                                        dipartimento,
+                                        {selectedTask = it}
+                                    )
+                                } else {
+                                    TaskSospesa(
+                                        elemento,
+                                        tipo,
+                                        token,
+                                        {
+                                            Task_list_By_project = Task_list_By_project - it
+                                        },
+                                        { isLoading = it },
+                                        { showConnErrorDialog = it },
+                                        { isCompletedDialog = it },
+                                        dipartimento,
+                                        {selectedTask = it}
+                                    )
                                 }
                             }
                         }
@@ -521,11 +966,13 @@ class ListViewer : ComponentActivity(){
                     if (showConnErrorDialog) {
                         AlertDialog(
                             onDismissRequest = { /* Non fare nulla per renderlo modale */ },
-                            icon = { Image(
-                                painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
-                                contentDescription = "Warning",
-                                modifier = Modifier.size(48.dp),
-                            ) },
+                            icon = {
+                                Image(
+                                    painter = painterResource(id = R.drawable.police_car_light_svgrepo_com),
+                                    contentDescription = "Warning",
+                                    modifier = Modifier.size(48.dp),
+                                )
+                            },
                             title = { Text("Problema di connessione") },
                             text = { Text("Problema di connessione si prega di attendere e riprovare.") },
                             confirmButton = {
@@ -546,11 +993,13 @@ class ListViewer : ComponentActivity(){
                     if (isCompletedDialog) {
                         AlertDialog(
                             onDismissRequest = { isCompletedDialog = false },
-                            icon = { Image(
-                                painter = painterResource(id = R.drawable.check_mark_button_svgrepo_com),
-                                contentDescription = "Warning",
-                                modifier = Modifier.size(48.dp),
-                            ) },
+                            icon = {
+                                Image(
+                                    painter = painterResource(id = R.drawable.check_mark_button_svgrepo_com),
+                                    contentDescription = "Warning",
+                                    modifier = Modifier.size(48.dp),
+                                )
+                            },
                             title = { Text("Success!") },
                             text = { Text("Operazione avvenuta con successo!") },
                             confirmButton = {
@@ -559,15 +1008,18 @@ class ListViewer : ComponentActivity(){
                                         // Chiudi il dialog e permetti all'utente di riprovare
                                         isCompleted = true
                                         isCompletedDialog = false
-                                        if(tipo.equals("dipendente")) {
-                                            val intent = Intent(this, HomeDipendenteActivity::class.java)
-                                            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                        if (tipo.equals("dipendente")) {
+                                            val intent =
+                                                Intent(this, HomeDipendenteActivity::class.java)
+                                            intent.flags =
+                                                Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                                             startActivity(intent)
                                             finish()
-                                        }
-                                        else{
-                                            val intent = Intent(this, HomeManagerActivity::class.java)
-                                            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                        } else {
+                                            val intent =
+                                                Intent(this, HomeManagerActivity::class.java)
+                                            intent.flags =
+                                                Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                                             startActivity(intent)
                                             finish()
                                         }
@@ -582,13 +1034,14 @@ class ListViewer : ComponentActivity(){
                         )
                     }
                 }
+                }
             )
         }
     }
 }
 
 @Composable
-fun TaskCompletata(task: Task, tipo: String?, token: String?, onDeleteRequest: (Task) -> Unit, onLoadingChange: (Boolean) -> Unit, onErrorChange: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit, dipartimento: Int){
+fun TaskCompletata(task: Task, tipo: String?, token: String?, onDeleteRequest: (Task) -> Unit, onLoadingChange: (Boolean) -> Unit, onErrorChange: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit, dipartimento: Int, onSelect: (Task) -> Unit){
     val context = LocalContext.current
     var isExpanded by remember { mutableStateOf(false) }
     var showConfirmationDialog by remember { mutableStateOf(false) }
@@ -597,6 +1050,8 @@ fun TaskCompletata(task: Task, tipo: String?, token: String?, onDeleteRequest: (
         println("Caught $exception")
     }
     val scope = rememberCoroutineScope()
+    val configuration = LocalConfiguration.current
+    val isLandScape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     if (showConfirmationDialog) {
         AlertDialog(
             onDismissRequest = { /* Non fare nulla per renderlo modale */ },
@@ -718,16 +1173,21 @@ fun TaskCompletata(task: Task, tipo: String?, token: String?, onDeleteRequest: (
                 modifier = Modifier.size(48.dp),
                 onClick = {
                     if(tipo.equals("dipendente")) {
-                        val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
-                            .adapter(Task::class.java)
-                        val gson = moshi.toJson(task)
-                        val taskInfoIntent = Intent(context, InfoViewer::class.java)
-                        taskInfoIntent.putExtra("task", gson)
-                        taskInfoIntent.putExtra("type", "task_completata")
-                        taskInfoIntent.putExtra("tipo", tipo)
-                        taskInfoIntent.putExtra("infoType", "task")
-                        taskInfoIntent.putExtra("token", token)
-                        context.startActivity(taskInfoIntent)
+                        if(isLandScape){
+                            onSelect(task)
+                        }
+                        else {
+                            val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+                                .adapter(Task::class.java)
+                            val gson = moshi.toJson(task)
+                            val taskInfoIntent = Intent(context, InfoViewer::class.java)
+                            taskInfoIntent.putExtra("task", gson)
+                            taskInfoIntent.putExtra("type", "task_completata")
+                            taskInfoIntent.putExtra("tipo", tipo)
+                            taskInfoIntent.putExtra("infoType", "task")
+                            taskInfoIntent.putExtra("token", token)
+                            context.startActivity(taskInfoIntent)
+                        }
                     }
                     else{
                         isExpanded = true
@@ -744,17 +1204,22 @@ fun TaskCompletata(task: Task, tipo: String?, token: String?, onDeleteRequest: (
                 DropdownMenuItem(
                     text = { Text("Info") },
                     onClick = {
-                        isExpanded = false
-                        val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
-                            .adapter(Task::class.java)
-                        val gson = moshi.toJson(task)
-                        val taskInfoIntent = Intent(context, InfoViewer::class.java)
-                        taskInfoIntent.putExtra("task", gson)
-                        taskInfoIntent.putExtra("type", "task_completata")
-                        taskInfoIntent.putExtra("tipo", tipo)
-                        taskInfoIntent.putExtra("infoType", "task")
-                        taskInfoIntent.putExtra("token", token)
-                        context.startActivity(taskInfoIntent)
+                        if(isLandScape){
+                            onSelect(task)
+                            isExpanded = false
+                        }else {
+                            isExpanded = false
+                            val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+                                .adapter(Task::class.java)
+                            val gson = moshi.toJson(task)
+                            val taskInfoIntent = Intent(context, InfoViewer::class.java)
+                            taskInfoIntent.putExtra("task", gson)
+                            taskInfoIntent.putExtra("type", "task_completata")
+                            taskInfoIntent.putExtra("tipo", tipo)
+                            taskInfoIntent.putExtra("infoType", "task")
+                            taskInfoIntent.putExtra("token", token)
+                            context.startActivity(taskInfoIntent)
+                        }
                     }
                 )
                 DropdownMenuItem(
@@ -771,7 +1236,7 @@ fun TaskCompletata(task: Task, tipo: String?, token: String?, onDeleteRequest: (
 
 
 @Composable
-fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: (Task) -> Unit, isSuspend: Boolean, onLoadingChange: (Boolean) -> Unit, onErrorChange: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit, dipartimento: Int){
+fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: (Task) -> Unit, isSuspend: Boolean, onLoadingChange: (Boolean) -> Unit, onErrorChange: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit, dipartimento: Int, onSelect: (Task) -> Unit){
     val context = LocalContext.current
     var isExpanded by remember { mutableStateOf(false) }
     var showConfirmationDialog by remember { mutableStateOf(false) }
@@ -780,6 +1245,8 @@ fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: (Tas
         println("Caught $exception")
     }
     val scope = rememberCoroutineScope()
+    val configuration = LocalConfiguration.current
+    val isLandScape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     if (showConfirmationDialog) {
         AlertDialog(
             onDismissRequest = { /* Non fare nulla per renderlo modale */ },
@@ -905,6 +1372,10 @@ fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: (Tas
                 modifier = Modifier.size(48.dp),
                 onClick = {
                     if(tipo.equals("dipendente")) {
+                        if (isLandScape) {
+                            onSelect(task)
+                        }
+                        else{
                         val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
                             .adapter(Task::class.java)
                         val gson = moshi.toJson(task)
@@ -915,6 +1386,7 @@ fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: (Tas
                         taskInfoIntent.putExtra("infoType", "task")
                         taskInfoIntent.putExtra("token", token)
                         context.startActivity(taskInfoIntent)
+                    }
                     }
                     else if(isSuspend){
                         val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
@@ -943,17 +1415,23 @@ fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: (Tas
                 DropdownMenuItem(
                     text = { Text("Info") },
                     onClick = {
-                        isExpanded = false
-                        val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
-                            .adapter(Task::class.java)
-                        val gson = moshi.toJson(task)
-                        val taskInfoIntent = Intent(context, InfoViewer::class.java)
-                        taskInfoIntent.putExtra("task", gson)
-                        taskInfoIntent.putExtra("type", "task_in_corso")
-                        taskInfoIntent.putExtra("tipo", tipo)
-                        taskInfoIntent.putExtra("infoType", "task")
-                        taskInfoIntent.putExtra("token", token)
-                        context.startActivity(taskInfoIntent)
+                        if (isLandScape) {
+                            onSelect(task)
+                            isExpanded = false
+                        }
+                        else {
+                            isExpanded = false
+                            val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+                                .adapter(Task::class.java)
+                            val gson = moshi.toJson(task)
+                            val taskInfoIntent = Intent(context, InfoViewer::class.java)
+                            taskInfoIntent.putExtra("task", gson)
+                            taskInfoIntent.putExtra("type", "task_in_corso")
+                            taskInfoIntent.putExtra("tipo", tipo)
+                            taskInfoIntent.putExtra("infoType", "task")
+                            taskInfoIntent.putExtra("token", token)
+                            context.startActivity(taskInfoIntent)
+                        }
                     }
                 )
                 DropdownMenuItem(
@@ -969,7 +1447,7 @@ fun TaskInCorso(task: Task, tipo: String?, token: String?, onDeleteRequest: (Tas
 }
 
 @Composable
-fun TaskSospesa(task: Task, tipo: String?, token: String?, onDeleteRequest: (Task) -> Unit, onLoadingChange: (Boolean) -> Unit, onErrorChange: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit, dipartimento: Int){
+fun TaskSospesa(task: Task, tipo: String?, token: String?, onDeleteRequest: (Task) -> Unit, onLoadingChange: (Boolean) -> Unit, onErrorChange: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit, dipartimento: Int, onSelect: (Task) -> Unit){
     val context = LocalContext.current
     var isExpanded by remember { mutableStateOf(false) }
     var showConfirmationDialog by remember { mutableStateOf(false) }
@@ -978,6 +1456,8 @@ fun TaskSospesa(task: Task, tipo: String?, token: String?, onDeleteRequest: (Tas
         println("Caught $exception")
     }
     val scope = rememberCoroutineScope()
+    val configuration = LocalConfiguration.current
+    val isLandScape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     if (showConfirmationDialog) {
         AlertDialog(
             onDismissRequest = { /* Non fare nulla per renderlo modale */ },
@@ -1103,16 +1583,21 @@ fun TaskSospesa(task: Task, tipo: String?, token: String?, onDeleteRequest: (Tas
                 modifier = Modifier.size(48.dp),
                 onClick = {
                     if(tipo.equals("dipendente")) {
-                        val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
-                            .adapter(Task::class.java)
-                        val gson = moshi.toJson(task)
-                        val taskInfoIntent = Intent(context, InfoViewer::class.java)
-                        taskInfoIntent.putExtra("task", gson)
-                        taskInfoIntent.putExtra("type", "task_sospesa")
-                        taskInfoIntent.putExtra("tipo", tipo)
-                        taskInfoIntent.putExtra("infoType", "task")
-                        taskInfoIntent.putExtra("token", token)
-                        context.startActivity(taskInfoIntent)
+                        if (isLandScape) {
+                            onSelect(task)
+                        }
+                        else {
+                            val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+                                .adapter(Task::class.java)
+                            val gson = moshi.toJson(task)
+                            val taskInfoIntent = Intent(context, InfoViewer::class.java)
+                            taskInfoIntent.putExtra("task", gson)
+                            taskInfoIntent.putExtra("type", "task_sospesa")
+                            taskInfoIntent.putExtra("tipo", tipo)
+                            taskInfoIntent.putExtra("infoType", "task")
+                            taskInfoIntent.putExtra("token", token)
+                            context.startActivity(taskInfoIntent)
+                        }
                     }
                     else{
                         isExpanded = true
@@ -1129,17 +1614,23 @@ fun TaskSospesa(task: Task, tipo: String?, token: String?, onDeleteRequest: (Tas
                 DropdownMenuItem(
                     text = { Text("Info") },
                     onClick = {
-                        isExpanded = false
-                        val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
-                            .adapter(Task::class.java)
-                        val gson = moshi.toJson(task)
-                        val taskInfoIntent = Intent(context, InfoViewer::class.java)
-                        taskInfoIntent.putExtra("task", gson)
-                        taskInfoIntent.putExtra("type", "task_sospesa")
-                        taskInfoIntent.putExtra("tipo", tipo)
-                        taskInfoIntent.putExtra("infoType", "task")
-                        taskInfoIntent.putExtra("token", token)
-                        context.startActivity(taskInfoIntent)
+                        if (isLandScape) {
+                            onSelect(task)
+                            isExpanded = false
+                        }
+                        else {
+                            isExpanded = false
+                            val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+                                .adapter(Task::class.java)
+                            val gson = moshi.toJson(task)
+                            val taskInfoIntent = Intent(context, InfoViewer::class.java)
+                            taskInfoIntent.putExtra("task", gson)
+                            taskInfoIntent.putExtra("type", "task_sospesa")
+                            taskInfoIntent.putExtra("tipo", tipo)
+                            taskInfoIntent.putExtra("infoType", "task")
+                            taskInfoIntent.putExtra("token", token)
+                            context.startActivity(taskInfoIntent)
+                        }
                     }
                 )
                 DropdownMenuItem(
@@ -1156,7 +1647,7 @@ fun TaskSospesa(task: Task, tipo: String?, token: String?, onDeleteRequest: (Tas
 }
 
 @Composable
-fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: String?, tipo: String?, dipartimento: Int?, onDeleteRequest: (Progetto) -> Unit, adding: Boolean, is_suspend: Boolean, onLoadingChange: (Boolean) -> Unit, onErrorChange: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit){
+fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: String?, tipo: String?, dipartimento: Int?, onDeleteRequest: (Progetto) -> Unit, adding: Boolean, is_suspend: Boolean, onLoadingChange: (Boolean) -> Unit, onErrorChange: (Boolean) -> Unit, isCompletedDialog: (Boolean) -> Unit, onSelectProgetto: (Progetto) -> Unit){
     var isExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
     var showConfirmationDialog by remember { mutableStateOf(false) }
@@ -1165,6 +1656,8 @@ fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: St
         println("Caught $exception")
     }
     val scope = rememberCoroutineScope()
+    val configuration = LocalConfiguration.current
+    val isLandScape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     if (showConfirmationDialog) {
         AlertDialog(
             onDismissRequest = { /* Non fare nulla per renderlo modale */ },
@@ -1315,6 +1808,33 @@ fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: St
                     DropdownMenuItem(
                         text = { Text("Info") },
                         onClick = {
+                            if (isLandScape) {
+                                onSelectProgetto(progetto)
+                                isExpanded = false
+                            }
+                            else {
+                                isExpanded = false
+                                val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+                                    .adapter(Progetto::class.java)
+                                val gson = moshi.toJson(progetto)
+                                val projectInfoIntent = Intent(context, InfoViewer::class.java)
+                                projectInfoIntent.putExtra("progetto", gson)
+                                projectInfoIntent.putExtra("infoType", "progetto")
+                                context.startActivity(projectInfoIntent)
+                            }
+                        }
+                    )
+
+                }
+                else{
+                DropdownMenuItem(
+                    text = { Text("Info") },
+                    onClick = {
+                        if (isLandScape) {
+                            onSelectProgetto(progetto)
+                            isExpanded = false
+                        }
+                        else {
                             isExpanded = false
                             val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
                                 .adapter(Progetto::class.java)
@@ -1324,21 +1844,6 @@ fun ProgettoElement(progetto: Progetto, email: String?, type: String?, token: St
                             projectInfoIntent.putExtra("infoType", "progetto")
                             context.startActivity(projectInfoIntent)
                         }
-                    )
-
-                }
-                else{
-                DropdownMenuItem(
-                    text = { Text("Info") },
-                    onClick = {
-                        isExpanded = false
-                        val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
-                            .adapter(Progetto::class.java)
-                        val gson = moshi.toJson(progetto)
-                        val projectInfoIntent = Intent(context, InfoViewer::class.java)
-                        projectInfoIntent.putExtra("progetto", gson)
-                        projectInfoIntent.putExtra("infoType", "progetto")
-                        context.startActivity(projectInfoIntent)
                     }
                 )
                 DropdownMenuItem(

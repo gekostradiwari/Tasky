@@ -15,10 +15,12 @@
         android:theme="@style/Theme.Tasky">
         <activity
             android:name=".ui.screens.LoginActivity"
+            android:screenOrientation="portrait"
             android:exported="false"
             android:label="@string/title_activity_login" />
         <activity
             android:name=".ui.screens.DepartmentActivity"
+            android:screenOrientation="portrait"
             android:exported="false"
             android:label="DepartmentActivity" />
         <activity
@@ -31,18 +33,22 @@
             android:label="DepartmentActivity" />
         <activity
             android:name=".ui.screens.HomeDipendenteActivity"
+            android:screenOrientation="portrait"
             android:exported="false"
             android:label="HomeDipendenteActivity" />
         <activity
             android:name=".ui.screens.HomeManagerActivity"
+            android:screenOrientation="portrait"
             android:exported="false"
             android:label="HomeManagerActivity" />
         <activity
             android:name=".ui.screens.Adder"
+            android:screenOrientation="portrait"
             android:exported="false"
             android:label="Adder" />
         <activity
             android:name=".ui.screens.TaskSospender"
+            android:screenOrientation="portrait"
             android:exported="false"
             android:label="TaskSospender" />
         <activity
