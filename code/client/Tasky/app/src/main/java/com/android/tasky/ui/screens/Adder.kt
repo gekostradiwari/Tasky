@@ -267,7 +267,7 @@ class Adder : ComponentActivity() {
                     statoCorrente--
                 }
                 else{
-                    (context as? Activity)?.finishAffinity()
+                    (context as? Activity)?.finish()
                 }
 
             }

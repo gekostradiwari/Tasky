@@ -11,7 +11,7 @@ object RetrofitInstance {
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
         .build()
-    val baseUrl = "http://192.168.1.2:5001/api/" //Impostare l'url del server dove sono hostate le API
+    val baseUrl = "https://tasky.bytethecookies.org/api/" //Impostare l'url del server dove sono hostate le API
     val loggingInterceptor = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
     val client = OkHttpClient.Builder().addInterceptor(loggingInterceptor).build()
     val api: RetrofitInterface by lazy{
